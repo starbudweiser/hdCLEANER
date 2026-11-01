@@ -157,7 +157,7 @@ private struct DiskPanel: View {
     private var monitorBadge: some View {
         HStack(spacing: Socle.M.space1_5) {
             Circle().fill(model.belowThreshold ? Socle.C.danger : Socle.C.success).frame(width: 8, height: 8)
-            Text(L(model.belowThreshold ? "monitor.below" : "monitor.badge")).socle(Socle.T.meta).foregroundStyle(Socle.C.text)
+            Text(L(model.belowThreshold ? "monitor.below" : "monitor.badge", model.monitoredDisk?.name ?? "–")).socle(Socle.T.meta).foregroundStyle(Socle.C.text)
         }
         .padding(.horizontal, Socle.M.space2).frame(height: 22)
         .background(Socle.C.bgSunken, in: RoundedRectangle(cornerRadius: Socle.M.radius))

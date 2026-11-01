@@ -32,8 +32,8 @@ T = [
 ("disk.used", "Utilisé : %@", "Used: %@", "Usado: %@", "Usato: %@"),
 ("disk.free", "Disponible : %@", "Available: %@", "Disponible: %@", "Disponibile: %@"),
 ("disk.junk", "Récupérable : %@", "Recoverable: %@", "Recuperable: %@", "Recuperabile: %@"),
-("monitor.badge", "Seuil surveillé", "Threshold monitor", "Umbral vigilado", "Soglia sorvegliata"),
-("monitor.below", "Sous le seuil", "Below threshold", "Bajo el umbral", "Sotto la soglia"),
+("monitor.badge", "Seuil surveillé : %@", "Threshold monitor: %@", "Umbral vigilado: %@", "Soglia sorvegliata: %@"),
+("monitor.below", "Sous le seuil : %@", "Below threshold: %@", "Bajo el umbral: %@", "Sotto la soglia: %@"),
 # --- catégories
 ("list.categories", "Catégories", "Categories", "Categorías", "Categorie"),
 ("list.size", "Taille", "Size", "Tamaño", "Dimensione"),
@@ -131,7 +131,11 @@ T = [
 ("theme.system", "Système", "System", "Sistema", "Sistema"),
 ("settings.largeFiles", "Gros fichiers à partir de %@", "Large files from %@", "Archivos grandes desde %@", "File grandi da %@"),
 ("settings.monitorOn", "Surveiller l'espace disque", "Monitor disk space", "Vigilar el espacio en disco", "Sorveglia lo spazio su disco"),
-("settings.monitorHelp", "Une notification vous prévient quand l'espace disponible passe sous le seuil. L'icône reste dans la barre de menus, même fenêtre fermée.", "A notification tells you when available space drops below the threshold. The icon stays in the menu bar, even with the window closed.", "Una notificación te avisa cuando el espacio disponible baja del umbral. El icono sigue en la barra de menús, incluso con la ventana cerrada.", "Una notifica ti avvisa quando lo spazio disponibile scende sotto la soglia. L'icona resta nella barra dei menu, anche a finestra chiusa."),
+("settings.monitorHelp", "Une notification vous prévient quand l'espace disponible du disque choisi passe sous le seuil. L'icône, avec le nom du disque, reste dans la barre de menus même fenêtre fermée.", "A notification tells you when the chosen disk's available space drops below the threshold. The icon, with the disk name, stays in the menu bar even with the window closed.", "Una notificación te avisa cuando el espacio disponible del disco elegido baja del umbral. El icono, con el nombre del disco, sigue en la barra de menús incluso con la ventana cerrada.", "Una notifica ti avvisa quando lo spazio disponibile del disco scelto scende sotto la soglia. L'icona, con il nome del disco, resta nella barra dei menu anche a finestra chiusa."),
+("settings.volume", "Disque surveillé", "Monitored disk", "Disco vigilado", "Disco sorvegliato"),
+("settings.volumeStartup", " (disque de démarrage)", " (startup disk)", " (disco de arranque)", " (disco di avvio)"),
+("settings.volumeMissing", " (non monté)", " (not mounted)", " (no montado)", " (non montato)"),
+("status.missing", "%@ : disque non monté", "%@: disk not mounted", "%@: disco no montado", "%@: disco non montato"),
 ("settings.threshold", "Prévenir sous %ld %% d'espace disponible (%@)", "Alert below %ld%% available space (%@)", "Avisar por debajo del %ld %% disponible (%@)", "Avvisa sotto il %ld%% di spazio disponibile (%@)"),
 ("settings.login", "Surveiller dès l'ouverture de session", "Monitor from login", "Vigilar desde el inicio de sesión", "Sorveglia dall'accesso"),
 ("settings.exclusionsHelp", "Ces éléments ne sont plus proposés. Clic droit sur une ligne de la liste pour en ajouter.", "These items are no longer suggested. Right-click a row in the list to add one.", "Estos elementos ya no se proponen. Clic derecho en una fila de la lista para añadir uno.", "Questi elementi non vengono più proposti. Clic destro su una riga dell'elenco per aggiungerne."),
@@ -139,8 +143,8 @@ T = [
 ("settings.remove", "Retirer", "Remove", "Quitar", "Rimuovi"),
 # --- notifications
 ("notify.title", "Espace disque faible", "Low disk space", "Poco espacio en disco", "Poco spazio su disco"),
-("notify.body", "Il reste %@ sur %@.", "%@ left on %@.", "Quedan %@ en %@.", "Restano %@ su %@."),
-("status.tooltip", "%@ disponibles", "%@ available", "%@ disponibles", "%@ disponibili"),
+("notify.body", "Il reste %@ sur « %@ ».", "%@ left on “%@”.", "Quedan %@ en «%@».", "Restano %@ su «%@»."),
+("status.tooltip", "%@ : %@ disponibles", "%@: %@ available", "%@: %@ disponibles", "%@: %@ disponibili"),
 ]
 INFOPLIST = [
 ("CFBundleDisplayName", "hdCLEANER", "hdCLEANER", "hdCLEANER", "hdCLEANER"),

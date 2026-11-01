@@ -48,9 +48,10 @@ struct SettingsView: View {
             Spacer(minLength: 0)
         }
         .padding(Socle.M.space5)
-        .frame(width: 480, height: 340, alignment: .topLeading)
+        .frame(width: 480, height: 380, alignment: .topLeading)
         .background(Socle.C.bg)
         .toggleStyle(.switch)
+        .onAppear { model.refreshDisk() } // liste des volumes à jour (disque externe branché depuis)
     }
 
     private var general: some View {
@@ -67,7 +68,15 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: Socle.M.space4) {
             Toggle(L("settings.monitorOn"), isOn: $model.settings.monitorEnabled).socle(Socle.T.label)
             Text(L("settings.monitorHelp")).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted).fixedSize(horizontal: false, vertical: true)
-            let limit = ThresholdMonitor.limit(total: model.disk?.total ?? 0, percent: model.settings.thresholdPercent)
+            Text(L("settings.volume")).socle(Socle.T.label).foregroundStyle(Socle.C.textStrong)
+            Picker("", selection: $model.settings.monitoredVolume) {
+                ForEach(model.volumes) { Text("\($0.name)\($0.path == "/" ? L("settings.volumeStartup") : "")").tag($0.path) }
+                if !model.volumes.contains(where: { $0.path == model.settings.monitoredVolume }) {
+                    Text(URL(fileURLWithPath: model.settings.monitoredVolume).lastPathComponent + L("settings.volumeMissing")).tag(model.settings.monitoredVolume)
+                }
+            }
+            .labelsHidden().pickerStyle(.menu).disabled(!model.settings.monitorEnabled)
+            let limit = ThresholdMonitor.limit(total: model.monitoredDisk?.total ?? 0, percent: model.settings.thresholdPercent)
             Text(L("settings.threshold", model.settings.thresholdPercent, SizeFormat.text(limit))).socle(Socle.T.label).foregroundStyle(Socle.C.textStrong)
             Slider(value: Binding(get: { Double(model.settings.thresholdPercent) }, set: { model.settings.thresholdPercent = Int($0) }), in: 5...50, step: 1)
                 .tint(Socle.C.accent).disabled(!model.settings.monitorEnabled)

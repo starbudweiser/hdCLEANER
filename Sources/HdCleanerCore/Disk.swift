@@ -22,6 +22,29 @@ public struct DiskInfo: Equatable, Sendable {
     }
 }
 
+/// Un volume monté, proposé au choix pour la surveillance.
+public struct Volume: Identifiable, Hashable, Sendable {
+    public var id: String { path }
+    public let name: String
+    public let path: String
+
+    public init(name: String, path: String) {
+        self.name = name
+        self.path = path
+    }
+
+    /// Volumes locaux visibles dans le Finder (disque de démarrage, disques externes) ; le démarrage vient en premier.
+    public static func mounted() -> [Volume] {
+        let keys: [URLResourceKey] = [.volumeLocalizedNameKey, .volumeIsLocalKey]
+        let urls = FileManager.default.mountedVolumeURLs(includingResourceValuesForKeys: keys, options: [.skipHiddenVolumes]) ?? []
+        let list = urls.compactMap { url -> Volume? in
+            guard let v = try? url.resourceValues(forKeys: Set(keys)), v.volumeIsLocal == true else { return nil }
+            return Volume(name: v.volumeLocalizedName ?? url.lastPathComponent, path: url.standardizedFileURL.path)
+        }
+        return list.sorted { ($0.path == "/" ? 0 : 1, $0.name) < ($1.path == "/" ? 0 : 1, $1.name) }
+    }
+}
+
 /// Alerte de seuil : une seule notification par franchissement, réarmée quand l'espace repasse 1 point au-dessus.
 public struct ThresholdMonitor: Equatable, Sendable {
     public private(set) var alerted = false

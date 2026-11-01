@@ -10,6 +10,8 @@ public struct AppSettings: Codable, Equatable {
     public var largeFileMinimumMB = 500
     public var monitorEnabled = false
     public var thresholdPercent = 15
+    /// Point de montage du volume surveillé ; « / » est le disque de démarrage.
+    public var monitoredVolume = "/"
     public var excludedPaths: [String] = []
 
     public init() {}
@@ -21,6 +23,7 @@ public struct AppSettings: Codable, Equatable {
         largeFileMinimumMB = (try? c.decode(Int.self, forKey: .largeFileMinimumMB)) ?? d.largeFileMinimumMB
         monitorEnabled = (try? c.decode(Bool.self, forKey: .monitorEnabled)) ?? d.monitorEnabled
         thresholdPercent = (try? c.decode(Int.self, forKey: .thresholdPercent)) ?? d.thresholdPercent
+        monitoredVolume = (try? c.decode(String.self, forKey: .monitoredVolume)) ?? d.monitoredVolume
         excludedPaths = (try? c.decode([String].self, forKey: .excludedPaths)) ?? d.excludedPaths
     }
 

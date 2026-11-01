@@ -27,6 +27,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSApp.mainMenu = makeMenu()
         status = MonitorStatus(model: model, open: { [weak self] in self?.showWindow() })
         model.startMonitoring()
+        DistributedNotificationCenter.default().addObserver(forName: SingleInstance.showWindow, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.showWindow() }
+        }
         if background {
             NSApp.setActivationPolicy(.accessory)
         } else {
@@ -108,6 +111,7 @@ final class MonitorStatus: NSObject {
     private let model: AppModel
     private let open: () -> Void
     private var item: NSStatusItem?
+    private var header: NSMenuItem?
 
     init(model: AppModel, open: @escaping () -> Void) {
         self.model = model
@@ -126,6 +130,11 @@ final class MonitorStatus: NSObject {
         if item == nil {
             let new = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
             let menu = NSMenu()
+            let head = NSMenuItem(title: "", action: nil, keyEquivalent: "") // nom du disque surveillé et son espace libre
+            head.isEnabled = false
+            menu.addItem(head)
+            header = head
+            menu.addItem(.separator())
             let entry = NSMenuItem(title: L("menu.open"), action: #selector(openWindow), keyEquivalent: "")
             entry.target = self
             menu.addItem(entry)
@@ -137,15 +146,24 @@ final class MonitorStatus: NSObject {
             new.menu = menu
             item = new
         }
-        guard let button = item?.button, let disk = model.disk else { return }
+        guard let button = item?.button else { return }
         let symbol = NSImage(systemSymbolName: "internaldrive", accessibilityDescription: nil)
         symbol?.isTemplate = !model.belowThreshold
         button.image = symbol
         button.contentTintColor = model.belowThreshold ? .systemRed : nil
         button.imagePosition = .imageLeading
-        button.title = SizeFormat.text(disk.available)
         button.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)
-        button.toolTip = L("status.tooltip", SizeFormat.text(disk.available))
+        guard let disk = model.monitoredDisk else { // volume démonté : on le dit au lieu d'afficher le disque de démarrage
+            let name = URL(fileURLWithPath: model.settings.monitoredVolume).lastPathComponent
+            button.title = "\(name) –"
+            button.toolTip = L("status.missing", name)
+            header?.title = L("status.missing", name)
+            return
+        }
+        let text = L("status.tooltip", disk.name, SizeFormat.text(disk.available))
+        button.title = "\(disk.name)  \(SizeFormat.text(disk.available))"
+        button.toolTip = text
+        header?.title = text
     }
 
     @objc private func openWindow() { open() }

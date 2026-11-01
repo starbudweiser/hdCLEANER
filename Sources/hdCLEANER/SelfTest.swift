@@ -109,7 +109,7 @@ enum SelfTest {
         wait(model)
         save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("main.png"))
         for tab in SettingsTab.allCases {
-            save(SettingsView(tab: tab).environmentObject(model), size: NSSize(width: 480, height: 340), to: dir.appendingPathComponent("settings-\(tab.rawValue).png"))
+            save(SettingsView(tab: tab).environmentObject(model), size: NSSize(width: 480, height: 380), to: dir.appendingPathComponent("settings-\(tab.rawValue).png"))
         }
         Swift.print("OK", dir.path)
     }

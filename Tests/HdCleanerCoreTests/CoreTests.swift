@@ -328,4 +328,12 @@ final class CoreTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: target.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: neighbour.path))
     }
+
+    func testMountedVolumesStartWithStartupDisk() {
+        let volumes = Volume.mounted()
+        XCTAssertEqual(volumes.first?.path, "/")
+        XCTAssertFalse(volumes.first?.name.isEmpty ?? true)
+        XCTAssertEqual(AppSettings().monitoredVolume, "/")
+        XCTAssertEqual(AppSettings.decode(#"{"monitoredVolume": "/Volumes/X"}"#.data(using: .utf8)).monitoredVolume, "/Volumes/X")
+    }
 }

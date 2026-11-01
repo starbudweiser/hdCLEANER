@@ -17,6 +17,9 @@ final class AppModel: ObservableObject {
 
     @Published var settings: AppSettings { didSet { settingsChanged(oldValue) } }
     @Published private(set) var disk = DiskInfo.read()
+    /// Le volume choisi pour la surveillance (le disque de démarrage par défaut) ; nil s'il n'est plus monté.
+    @Published private(set) var monitoredDisk: DiskInfo?
+    @Published private(set) var volumes: [Volume] = []
     @Published private(set) var phase = Phase.idle
     @Published private(set) var result: ScanResult?
     @Published private(set) var report: CleanReport?
@@ -71,7 +74,7 @@ final class AppModel: ObservableObject {
         guard settings != old else { return }
         UserDefaults.standard.set(try? JSONEncoder().encode(settings), forKey: Self.settingsKey)
         if settings.theme != old.theme { Socle.apply(socleTheme) }
-        if settings.monitorEnabled != old.monitorEnabled || settings.thresholdPercent != old.thresholdPercent {
+        if settings.monitorEnabled != old.monitorEnabled || settings.thresholdPercent != old.thresholdPercent || settings.monitoredVolume != old.monitoredVolume {
             monitor = ThresholdMonitor()
             startMonitoring()
         }
@@ -170,7 +173,9 @@ final class AppModel: ObservableObject {
 
     func refreshDisk() {
         disk = DiskInfo.read()
-        if settings.monitorEnabled, let disk, monitor.check(disk, percent: settings.thresholdPercent) { Notifier.lowDisk(disk) }
+        volumes = Volume.mounted()
+        monitoredDisk = DiskInfo.read(URL(fileURLWithPath: settings.monitoredVolume))
+        if settings.monitorEnabled, let watched = monitoredDisk, monitor.check(watched, percent: settings.thresholdPercent) { Notifier.lowDisk(watched) }
         onMonitorChange?()
     }
 }
@@ -320,7 +325,7 @@ enum Notifier {
     static func lowDisk(_ disk: DiskInfo) {
         let content = UNMutableNotificationContent()
         content.title = L("notify.title")
-        content.body = L("notify.body", SizeFormat.text(disk.available), SizeFormat.text(disk.total))
+        content.body = L("notify.body", SizeFormat.text(disk.available), disk.name)
         center?.add(UNNotificationRequest(identifier: "low-disk", content: content, trigger: nil))
     }
 }
