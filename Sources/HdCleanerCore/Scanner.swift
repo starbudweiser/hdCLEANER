@@ -143,7 +143,7 @@ private struct Walk {
 
     private mutating func add(_ url: URL, _ category: JunkCategory, inUse: Bool = false, knownSize: Int64? = nil, admin: Bool = false, parts: [String] = []) {
         let path = url.standardizedFileURL.path
-        guard !cancel.isCancelled, !claimed.contains(path), !context.excluded.contains(path) else { return }
+        guard !cancel.isCancelled, !claimed.contains(path), !context.excluded.contains(where: { path == $0 || path.hasPrefix($0 + "/") }) else { return }
         let bytes = knownSize ?? size(of: url)
         guard bytes > 0 else { return }
         claimed.insert(path)

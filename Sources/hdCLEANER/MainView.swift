@@ -332,6 +332,10 @@ private struct ItemsPanel: View {
                 }
                 .buttonStyle(.plain).help(L("list.reveal"))
             }
+            Button { model.exclude(item) } label: {
+                Image(systemName: "eye.slash").font(.system(size: 11)).foregroundStyle(Socle.C.textMuted)
+            }
+            .buttonStyle(.plain).help(L("list.exclude"))
         }
         .padding(.horizontal, Socle.M.space3)
         .frame(height: 28)

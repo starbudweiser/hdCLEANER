@@ -23,7 +23,7 @@ enum SettingsWindow {
             hosting.sizingOptions = .preferredContentSize
             let w = NSWindow(contentViewController: hosting)
             w.styleMask = [.titled, .closable]
-            w.title = L("menu.settings")
+            w.title = L("settings.title")
             w.isReleasedWhenClosed = false
             w.center()
             window = w
@@ -87,9 +87,24 @@ struct SettingsView: View {
         }
     }
 
+    private func addExclusions() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = true
+        panel.showsHiddenFiles = true
+        panel.directoryURL = model.home
+        guard panel.runModal() == .OK else { return }
+        for url in panel.urls where !model.settings.excludedPaths.contains(url.standardizedFileURL.path) { model.settings.excludedPaths.append(url.standardizedFileURL.path) }
+    }
+
     private var exclusions: some View {
         VStack(alignment: .leading, spacing: Socle.M.space3) {
-            Text(L("settings.exclusionsHelp")).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted).fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .top) {
+                Text(L("settings.exclusionsHelp")).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted).fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                Button(L("settings.add")) { addExclusions() }.buttonStyle(SocleButtonStyle(.secondary, height: 26)).fixedSize()
+            }
             if model.settings.excludedPaths.isEmpty {
                 Text(L("settings.exclusionsEmpty")).socle(Socle.T.body).foregroundStyle(Socle.C.textMuted)
             }

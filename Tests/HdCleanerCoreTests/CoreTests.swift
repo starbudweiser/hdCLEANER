@@ -336,4 +336,24 @@ final class CoreTests: XCTestCase {
         XCTAssertEqual(AppSettings().monitoredVolume, "/")
         XCTAssertEqual(AppSettings.decode(#"{"monitoredVolume": "/Volumes/X"}"#.data(using: .utf8)).monitoredVolume, "/Volumes/X")
     }
+
+    func testMaintenanceScripts() {
+        XCTAssertEqual(Set(MaintenanceTask.allCases.map(\.id)).count, MaintenanceTask.allCases.count)
+        XCTAssertTrue(MaintenanceTask.repairHomePermissions.script(uid: 501).contains("resetUserPermissions / 501"))
+        XCTAssertTrue(MaintenanceTask.flushDNS.needsAdmin)
+        XCTAssertFalse(MaintenanceTask.verifyStartupDisk.needsAdmin)
+        for t in MaintenanceTask.allCases { XCTAssertTrue(t.script(uid: 501).hasPrefix("/"), t.rawValue) } // commandes en chemin absolu
+    }
+
+    func testExcludedFolderExcludesItsContent() throws {
+        try file("Library/Caches/org.keep.me/a")
+        try file("Downloads/Projet/a.zip")
+        try file("Downloads/Projet/sub/b.zip")
+        try file("Downloads/autre.zip")
+        var c = context()
+        c.excluded = [home.appendingPathComponent("Library/Caches/org.keep.me").path, home.appendingPathComponent("Downloads/Projet").path]
+        let r = Scanner.scan(c)
+        XCTAssertEqual(paths(r, .appCaches), [])
+        XCTAssertEqual(paths(r, .downloads), ["Downloads/autre.zip"])
+    }
 }

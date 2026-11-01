@@ -138,8 +138,10 @@ T = [
 ("status.missing", "%@ : disque non monté", "%@: disk not mounted", "%@: disco no montado", "%@: disco non montato"),
 ("settings.threshold", "Prévenir sous %ld %% d'espace disponible (%@)", "Alert below %ld%% available space (%@)", "Avisar por debajo del %ld %% disponible (%@)", "Avvisa sotto il %ld%% di spazio disponibile (%@)"),
 ("settings.login", "Surveiller dès l'ouverture de session", "Monitor from login", "Vigilar desde el inicio de sesión", "Sorveglia dall'accesso"),
-("settings.exclusionsHelp", "Ces éléments ne sont plus proposés. Clic droit sur une ligne de la liste pour en ajouter.", "These items are no longer suggested. Right-click a row in the list to add one.", "Estos elementos ya no se proponen. Clic derecho en una fila de la lista para añadir uno.", "Questi elementi non vengono più proposti. Clic destro su una riga dell'elenco per aggiungerne."),
+("settings.exclusionsHelp", "Ces éléments, et tout ce qu'ils contiennent, ne sont plus proposés. Utilisez l'icône œil barré d'une ligne de la liste, le clic droit ou « Ajouter… ».", "These items, and everything inside them, are no longer suggested. Use the crossed-out eye icon on a list row, right-click, or “Add…”.", "Estos elementos, y todo lo que contienen, ya no se proponen. Usa el icono del ojo tachado de una fila de la lista, el clic derecho o «Añadir…».", "Questi elementi, e tutto ciò che contengono, non vengono più proposti. Usa l'icona dell'occhio barrato di una riga dell'elenco, il clic destro o «Aggiungi…»."),
 ("settings.exclusionsEmpty", "Aucune exclusion.", "No exclusions.", "Sin exclusiones.", "Nessuna esclusione."),
+("settings.title", "Réglages", "Settings", "Ajustes", "Impostazioni"),
+("settings.add", "Ajouter…", "Add…", "Añadir…", "Aggiungi…"),
 ("settings.remove", "Retirer", "Remove", "Quitar", "Rimuovi"),
 # --- notifications
 ("notify.title", "Espace disque faible", "Low disk space", "Poco espacio en disco", "Poco spazio su disco"),

@@ -126,8 +126,10 @@
 "status.missing" = "%@: disco non montato";
 "settings.threshold" = "Avvisa sotto il %ld%% di spazio disponibile (%@)";
 "settings.login" = "Sorveglia dall'accesso";
-"settings.exclusionsHelp" = "Questi elementi non vengono più proposti. Clic destro su una riga dell'elenco per aggiungerne.";
+"settings.exclusionsHelp" = "Questi elementi, e tutto ciò che contengono, non vengono più proposti. Usa l'icona dell'occhio barrato di una riga dell'elenco, il clic destro o «Aggiungi…».";
 "settings.exclusionsEmpty" = "Nessuna esclusione.";
+"settings.title" = "Impostazioni";
+"settings.add" = "Aggiungi…";
 "settings.remove" = "Rimuovi";
 "notify.title" = "Poco spazio su disco";
 "notify.body" = "Restano %@ su «%@».";

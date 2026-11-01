@@ -47,9 +47,12 @@ final class AppModel: ObservableObject {
         return FileManager.default.homeDirectoryForCurrentUser
     }
 
-    init(home: URL = AppModel.defaultHome) {
+    private let defaults: UserDefaults
+
+    init(home: URL = AppModel.defaultHome, defaults: UserDefaults = .standard) {
         self.home = home
-        settings = AppSettings.decode(UserDefaults.standard.data(forKey: Self.settingsKey))
+        self.defaults = defaults
+        settings = AppSettings.decode(defaults.data(forKey: Self.settingsKey))
     }
 
     var socleTheme: Socle.Theme {
@@ -72,7 +75,7 @@ final class AppModel: ObservableObject {
 
     private func settingsChanged(_ old: AppSettings) {
         guard settings != old else { return }
-        UserDefaults.standard.set(try? JSONEncoder().encode(settings), forKey: Self.settingsKey)
+        defaults.set(try? JSONEncoder().encode(settings), forKey: Self.settingsKey)
         if settings.theme != old.theme { Socle.apply(socleTheme) }
         if settings.monitorEnabled != old.monitorEnabled || settings.thresholdPercent != old.thresholdPercent || settings.monitoredVolume != old.monitoredVolume {
             monitor = ThresholdMonitor()

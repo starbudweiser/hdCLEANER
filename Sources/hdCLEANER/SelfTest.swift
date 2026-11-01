@@ -14,6 +14,7 @@ enum SelfTest {
         case "e2e": endToEnd(URL(fileURLWithPath: path))
         case "trash": trash(URL(fileURLWithPath: path))
         case "apps": apps(path)
+        case "exclude": exclude(URL(fileURLWithPath: path))
         case "render": render(to: URL(fileURLWithPath: path))
         default: Swift.print("commande inconnue")
         }
@@ -47,6 +48,24 @@ enum SelfTest {
         show(r)
         Swift.print("applis :", c.installed.count, "durée :", String(format: "%.1f s", Date().timeIntervalSince(start)))
         for item in (r.items[.leftovers] ?? []).prefix(12) { Swift.print(" reste :", item.name, SizeFormat.text(item.size)) }
+    }
+
+    /// Exclusion par le modèle (suite de préférences jetable, jamais celles de l'utilisateur) : la ligne disparaît, reste exclue après une nouvelle analyse et au relancement.
+    private static func exclude(_ home: URL) {
+        _ = NSApplication.shared
+        let suite = "com.stephan.hdcleaner.selftest"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let model = AppModel(home: home, defaults: defaults)
+        func scan() { model.scan(); wait(model) }
+        scan()
+        guard let item = model.result?.all.first else { Swift.print("rien à exclure"); return }
+        model.exclude(item)
+        Swift.print("exclu :", item.path, "| dans les réglages :", model.settings.excludedPaths.contains(item.path))
+        scan()
+        Swift.print("revient après analyse :", model.result?.all.contains { $0.path == item.path } ?? false)
+        Swift.print("après relancement :", AppModel(home: home, defaults: defaults).settings.excludedPaths.contains(item.path))
     }
 
     /// Applis installées (lecture seule) et, pour celle dont le nom contient l'argument, ses fichiers liés.

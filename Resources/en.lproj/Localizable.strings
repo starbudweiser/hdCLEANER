@@ -126,8 +126,10 @@
 "status.missing" = "%@: disk not mounted";
 "settings.threshold" = "Alert below %ld%% available space (%@)";
 "settings.login" = "Monitor from login";
-"settings.exclusionsHelp" = "These items are no longer suggested. Right-click a row in the list to add one.";
+"settings.exclusionsHelp" = "These items, and everything inside them, are no longer suggested. Use the crossed-out eye icon on a list row, right-click, or “Add…”.";
 "settings.exclusionsEmpty" = "No exclusions.";
+"settings.title" = "Settings";
+"settings.add" = "Add…";
 "settings.remove" = "Remove";
 "notify.title" = "Low disk space";
 "notify.body" = "%@ left on “%@”.";
