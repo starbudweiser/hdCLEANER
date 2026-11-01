@@ -75,4 +75,18 @@ final class LocalizationTests: XCTestCase {
             XCTAssertNotNil(fr["categoryHelp.\(name)"], name)
         }
     }
+
+    func testToolTextsAreTranslated() throws {
+        let fr = try table("fr")
+        for t in ["flushDNS", "reindexSpotlight", "rebuildLaunchServices", "periodicScripts", "repairHomePermissions", "verifyStartupDisk"] {
+            XCTAssertNotNil(fr["maintenance.\(t)"], t); XCTAssertNotNil(fr["maintenanceHelp.\(t)"], t)
+        }
+        for k in ["dsStore", "appleDouble", "macosxFolder", "tempItems", "volumeSystem"] {
+            XCTAssertNotNil(fr["invisible.\(k)"], k); XCTAssertNotNil(fr["invisibleHelp.\(k)"], k)
+        }
+        for k in ["hidden", "locked", "noDump", "opaque", "appendOnly"] { XCTAssertNotNil(fr["perm.flag.\(k)"], k) }
+        for k in ["all", "files", "directories"] { XCTAssertNotNil(fr["scope.\(k)"], k) }
+        for k in ["keep", "on", "off"] { XCTAssertNotNil(fr["change.\(k)"], k) }
+        for k in ["clean", "apps", "maintenance", "permissions", "invisibles"] { XCTAssertNotNil(fr["mode.\(k)"], k) }
+    }
 }

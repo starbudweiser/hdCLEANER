@@ -13,6 +13,8 @@ public struct AppSettings: Codable, Equatable {
     /// Point de montage du volume surveillé ; « / » est le disque de démarrage.
     public var monitoredVolume = "/"
     public var excludedPaths: [String] = []
+    /// Dossiers et volumes où les fichiers invisibles de macOS sont supprimés dès qu'ils apparaissent.
+    public var watchedFolders: [String] = []
 
     public init() {}
 
@@ -25,6 +27,7 @@ public struct AppSettings: Codable, Equatable {
         thresholdPercent = (try? c.decode(Int.self, forKey: .thresholdPercent)) ?? d.thresholdPercent
         monitoredVolume = (try? c.decode(String.self, forKey: .monitoredVolume)) ?? d.monitoredVolume
         excludedPaths = (try? c.decode([String].self, forKey: .excludedPaths)) ?? d.excludedPaths
+        watchedFolders = (try? c.decode([String].self, forKey: .watchedFolders)) ?? d.watchedFolders
     }
 
     /// Ramène les valeurs dans les plages de l'interface.

@@ -356,4 +356,206 @@ final class CoreTests: XCTestCase {
         XCTAssertEqual(paths(r, .appCaches), [])
         XCTAssertEqual(paths(r, .downloads), ["Downloads/autre.zip"])
     }
+
+    // MARK: Permissions par lot
+
+    private func runShell(_ script: String) throws -> String {
+        let file = home.appendingPathComponent("plan-\(UUID().uuidString).sh")
+        try script.write(to: file, atomically: true, encoding: .utf8)
+        let p = Process(), pipe = Pipe()
+        p.executableURL = URL(fileURLWithPath: "/bin/sh")
+        p.arguments = [file.path]
+        p.standardOutput = pipe
+        p.standardError = pipe
+        try p.run()
+        let out = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+        p.waitUntilExit()
+        return out
+    }
+
+    private func mode(_ url: URL) throws -> Int {
+        (try FileManager.default.attributesOfItem(atPath: url.path)[.posixPermissions] as? Int) ?? -1
+    }
+
+    func testPlanValidation() {
+        let h = URL(fileURLWithPath: "/Users/x")
+        var plan = PermissionPlan()
+        XCTAssertEqual(plan.issues(home: h), [.noTarget, .nothingToDo])
+        plan.targets = ["/Volumes/Data/projet"]
+        plan.fileMode = "644"
+        plan.directoryMode = "755"
+        plan.owner = "stephan:staff"
+        XCTAssertEqual(plan.issues(home: h), [])
+        plan.fileMode = "9x"
+        plan.owner = "a b; rm -rf /"
+        plan.directoryMode = "644"
+        XCTAssertEqual(plan.issues(home: h), [.badMode("9x"), .badOwner("a b; rm -rf /"), .unusableDirectoryMode("644")])
+        for ok in ["644", "0755", "u+rw,go-w", "a=rX", "+x"] { XCTAssertTrue(ModeSpec.isValid(ok), ok) }
+        for bad in ["", "8", "64", "u+rw; id", "rwx", "$(id)", "755 /"] { XCTAssertFalse(ModeSpec.isValid(bad), bad) }
+    }
+
+    func testForbiddenTargets() throws {
+        let h = URL(fileURLWithPath: "/Users/stephan")
+        for bad in ["/", "/System", "/System/Library", "/usr", "/usr/bin", "/bin", "/sbin", "/private", "/private/etc", "/etc", "/var", "/Library", "/Applications", "/Users", "/Volumes",
+                    "/Volumes/Macintosh HD"] {
+            XCTAssertFalse(PermissionGuard.isAllowedTarget(bad, home: h), bad)
+        }
+        for ok in [h.path, "/Users/stephan/Documents", "/Users/autre", "/Volumes/SKYRIM", "/Volumes/SKYRIM/dossier", "/Applications/Tool.app", "/usr/local/bin"] {
+            XCTAssertTrue(PermissionGuard.isAllowedTarget(ok, home: h), ok)
+        }
+    }
+
+    func testPlanScriptOrderAndQuoting() {
+        var plan = PermissionPlan()
+        plan.targets = ["/Volumes/Data/it's mine"]
+        plan.flags.locked = .off
+        plan.flags.hidden = .on
+        plan.fileMode = "644"
+        plan.directoryMode = "755"
+        plan.clearQuarantine = true
+        let lines = plan.script().split(separator: "\n").map(String.init)
+        let unlock = lines.firstIndex { $0.contains("nouchg") }!, chmodFiles = lines.firstIndex { $0.contains("-type f") && $0.contains("chmod 644") }!
+        let hide = lines.firstIndex { $0.contains("chflags -h hidden") }!
+        XCTAssertLessThan(unlock, chmodFiles)
+        XCTAssertLessThan(chmodFiles, hide)
+        XCTAssertTrue(plan.script().contains("'/Volumes/Data/it'\\''s mine'"))
+        XCTAssertTrue(plan.script().contains("-x"))
+        plan.scope = .files
+        XCTAssertFalse(plan.script().contains("chmod 755"))
+        plan.recursive = false
+        XCTAssertTrue(plan.script().contains("-maxdepth 0"))
+    }
+
+    func testPlanActuallyChangesModesFlagsAndOnlyWhereAsked() throws {
+        let f = try file("proj/a.txt"), g = try file("proj/sub/b.txt"), outside = try file("other/c.txt")
+        let dir = f.deletingLastPathComponent(), sub = g.deletingLastPathComponent()
+        var plan = PermissionPlan()
+        plan.targets = [dir.path]
+        plan.fileMode = "600"
+        plan.directoryMode = "750"
+        plan.flags.hidden = .on
+        let out = try runShell(plan.script())
+        XCTAssertTrue(out.contains("FIN"), out)
+        XCTAssertEqual(try mode(f), 0o600)
+        XCTAssertEqual(try mode(g), 0o600)
+        XCTAssertEqual(try mode(sub), 0o750)
+        XCTAssertEqual(try mode(dir), 0o750)
+        XCTAssertEqual(try f.resourceValues(forKeys: [.isHiddenKey]).isHidden, true)
+        XCTAssertNotEqual(try mode(outside), 0o600, "rien hors de la cible")
+
+        // Verrou puis déverrouillage ; le nom d'un fichier verrouillé ne se supprime plus.
+        plan.flags = PermissionPlan.Flags()
+        plan.flags.locked = .on
+        _ = try runShell(plan.script())
+        XCTAssertThrowsError(try FileManager.default.removeItem(at: f))
+        plan.flags = PermissionPlan.Flags()
+        plan.flags.clearAll = true
+        _ = try runShell(plan.script())
+        XCTAssertNoThrow(try FileManager.default.removeItem(at: f))
+    }
+
+    func testNonRecursivePlanOnlyTouchesTheTarget() throws {
+        let f = try file("proj/a.txt"), dir = f.deletingLastPathComponent()
+        var plan = PermissionPlan()
+        plan.targets = [dir.path]
+        plan.recursive = false
+        plan.directoryMode = "700"
+        plan.fileMode = "600"
+        _ = try runShell(plan.script())
+        XCTAssertEqual(try mode(dir), 0o700)
+        XCTAssertNotEqual(try mode(f), 0o600)
+    }
+
+    func testPreviewCountsByScope() throws {
+        try file("proj/a.txt"); try file("proj/sub/b.txt"); try file("proj/sub/c.txt")
+        try FileManager.default.createSymbolicLink(at: home.appendingPathComponent("proj/link"), withDestinationURL: home.appendingPathComponent("proj/a.txt"))
+        var plan = PermissionPlan()
+        plan.targets = [home.appendingPathComponent("proj").path]
+        var p = plan.preview()
+        XCTAssertEqual(p.files, 3)
+        XCTAssertEqual(p.directories, 2, "proj et sub ; le lien n'est pas compté")
+        plan.scope = .files
+        p = plan.preview()
+        XCTAssertEqual(p.total, 3)
+        plan.recursive = false
+        plan.scope = .all
+        XCTAssertEqual(plan.preview().total, 1)
+        let flag = CancelFlag(); flag.cancel()
+        XCTAssertTrue(plan.preview(cancel: flag).cancelled)
+    }
+
+    // MARK: Fichiers invisibles
+
+    func testInvisibleClassification() {
+        XCTAssertEqual(InvisibleKind.classify(name: ".DS_Store", isDirectory: false, atRoot: false), .dsStore)
+        XCTAssertNil(InvisibleKind.classify(name: ".DS_Store", isDirectory: true, atRoot: false))
+        XCTAssertEqual(InvisibleKind.classify(name: "._photo.jpg", isDirectory: false, atRoot: false), .appleDouble)
+        XCTAssertEqual(InvisibleKind.classify(name: ".AppleDouble", isDirectory: true, atRoot: false), .appleDouble)
+        XCTAssertEqual(InvisibleKind.classify(name: "__MACOSX", isDirectory: true, atRoot: false), .macosxFolder)
+        XCTAssertEqual(InvisibleKind.classify(name: ".Trashes", isDirectory: true, atRoot: true), .volumeSystem)
+        XCTAssertNil(InvisibleKind.classify(name: ".Trashes", isDirectory: true, atRoot: false), "seulement à la racine du volume")
+        for keep in [".git", ".ssh", ".zshrc", ".localized", "._", ".gitignore", "Icon\r", ".env"] {
+            XCTAssertNil(InvisibleKind.classify(name: keep, isDirectory: false, atRoot: true), keep)
+            XCTAssertNil(InvisibleKind.classify(name: keep, isDirectory: true, atRoot: true), keep)
+        }
+    }
+
+    func testInvisibleScanAndClean() throws {
+        try file("vol/a/.DS_Store"); try file("vol/a/._photo.jpg"); try file("vol/a/photo.jpg"); try file("vol/__MACOSX/x/._y")
+        try file("vol/.Spotlight-V100/Store-V2/db", kb: 30); try file("vol/b/.TemporaryItems/t"); try file("vol/.gitignore"); try file("vol/.git/config")
+        let root = home.appendingPathComponent("vol")
+        let scan = InvisibleScanner.scan(roots: [root])
+        func rel(_ k: InvisibleKind) -> [String] { (scan.items[k] ?? []).map { String($0.path.dropFirst(root.path.count + 1)) }.sorted() }
+        XCTAssertEqual(rel(.dsStore), ["a/.DS_Store"])
+        XCTAssertEqual(rel(.appleDouble), ["a/._photo.jpg"], "__MACOSX est compté en bloc, pas fichier par fichier")
+        XCTAssertEqual(rel(.macosxFolder), ["__MACOSX"])
+        XCTAssertEqual(rel(.tempItems), ["b/.TemporaryItems"])
+        XCTAssertEqual(rel(.volumeSystem), [".Spotlight-V100"])
+        XCTAssertGreaterThan(scan.total(.volumeSystem), 0)
+
+        // Nettoyage : ce qui est coché part ; le reste, les voisins et les fichiers cachés personnels restent.
+        let picked = (scan.items[.dsStore] ?? []) + (scan.items[.appleDouble] ?? []) + (scan.items[.macosxFolder] ?? [])
+        let report = Cleaner_like(picked, root)
+        XCTAssertEqual(report.count, 3)
+        XCTAssertTrue(report.failures.isEmpty)
+        for gone in ["vol/a/.DS_Store", "vol/a/._photo.jpg", "vol/__MACOSX"] { XCTAssertFalse(FileManager.default.fileExists(atPath: home.appendingPathComponent(gone).path), gone) }
+        for kept in ["vol/a/photo.jpg", "vol/.gitignore", "vol/.git/config", "vol/.Spotlight-V100/Store-V2/db", "vol/b/.TemporaryItems/t"] {
+            XCTAssertTrue(FileManager.default.fileExists(atPath: home.appendingPathComponent(kept).path), kept)
+        }
+    }
+
+    private func Cleaner_like(_ items: [InvisibleItem], _ root: URL) -> CleanReport { InvisibleCleaner.clean(items, roots: [root]) }
+
+    func testInvisibleCleanerRefusesForeignOrChangedItems() throws {
+        let kept = try file("vol/notes.txt"), ds = try file("vol/.DS_Store")
+        let root = home.appendingPathComponent("vol")
+        let other = try file("autre/.DS_Store")
+        XCTAssertFalse(InvisibleCleaner.isSafe(InvisibleItem(path: kept.path, size: 1, kind: .dsStore, isDirectory: false), roots: [root]), "mauvais nom")
+        XCTAssertFalse(InvisibleCleaner.isSafe(InvisibleItem(path: other.path, size: 1, kind: .dsStore, isDirectory: false), roots: [root]), "hors racine")
+        XCTAssertFalse(InvisibleCleaner.isSafe(InvisibleItem(path: root.path, size: 1, kind: .dsStore, isDirectory: true), roots: [root]), "la racine elle-même")
+        XCTAssertFalse(InvisibleCleaner.isSafe(InvisibleItem(path: ds.path, size: 1, kind: .dsStore, isDirectory: true), roots: [root]), "dossier à la place d'un fichier")
+        XCTAssertTrue(InvisibleCleaner.isSafe(InvisibleItem(path: ds.path, size: 1, kind: .dsStore, isDirectory: false), roots: [root]))
+    }
+
+    func testVolumeSystemItemsGoThroughAdmin() throws {
+        try file("vol/.Trashes/501/x")
+        let root = home.appendingPathComponent("vol")
+        let items = InvisibleScanner.scan(roots: [root]).items[.volumeSystem] ?? []
+        var script = ""
+        let refused = InvisibleCleaner.clean(items, roots: [root], runAdmin: { script = $0; return false })
+        XCTAssertTrue(refused.adminCancelled)
+        XCTAssertTrue(script.contains(".Trashes"))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: items[0].path))
+    }
+
+    func testWatcherReportedPathsOnlyAutoCleanSafeKinds() throws {
+        let ds = try file("vol/sub/.DS_Store"), ad = try file("vol/._x"), trashes = try file("vol/.Trashes/501/x").deletingLastPathComponent().deletingLastPathComponent()
+        let keep = try file("vol/sub/data.txt"), temp = try file("vol/sub/.TemporaryItems/t").deletingLastPathComponent()
+        let root = home.appendingPathComponent("vol")
+        let removed = InvisibleCleaner.cleanReported(paths: [ds.path, ad.path, trashes.path, keep.path, temp.path, "/etc/hosts"], roots: [root])
+        XCTAssertEqual(Set(removed), [ds.path, ad.path])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: trashes.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: temp.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: keep.path))
+    }
 }

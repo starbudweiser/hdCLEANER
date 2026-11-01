@@ -14,6 +14,8 @@ enum SelfTest {
         case "e2e": endToEnd(URL(fileURLWithPath: path))
         case "trash": trash(URL(fileURLWithPath: path))
         case "apps": apps(path)
+        case "watch": watch(URL(fileURLWithPath: path))
+        case "maint": maint(path)
         case "exclude": exclude(URL(fileURLWithPath: path))
         case "render": render(to: URL(fileURLWithPath: path))
         default: Swift.print("commande inconnue")
@@ -26,6 +28,13 @@ enum SelfTest {
         RunLoop.main.run(until: Date().addingTimeInterval(0.2))
         while model.busy && Date() < end { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
         RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+    }
+
+    private static func wait(_ model: InvisiblesModel) {
+        let end = Date().addingTimeInterval(60)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+        while model.busy && Date() < end { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
     }
 
     private static func show(_ r: ScanResult) {
@@ -66,6 +75,38 @@ enum SelfTest {
         scan()
         Swift.print("revient après analyse :", model.result?.all.contains { $0.path == item.path } ?? false)
         Swift.print("après relancement :", AppModel(home: home, defaults: defaults).settings.excludedPaths.contains(item.path))
+    }
+
+    /// Surveillance FSEvents sur un dossier d'essai : un .DS_Store, un ._ et un __MACOSX créés après le départ disparaissent, le reste reste.
+    private static func watch(_ dir: URL) {
+        _ = NSApplication.shared
+        let fm = FileManager.default
+        try? fm.createDirectory(at: dir.appendingPathComponent("sub"), withIntermediateDirectories: true)
+        let watcher = InvisibleWatcher()
+        nonisolated(unsafe) var removed: [String] = []
+        watcher.onRemoved = { removed += $0 }
+        watcher.update(paths: [dir.path])
+        RunLoop.main.run(until: Date().addingTimeInterval(1))
+        for name in ["sub/.DS_Store", "sub/._photo.jpg", "sub/photo.jpg", ".Trashes/x"] {
+            let url = dir.appendingPathComponent(name)
+            try? fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            fm.createFile(atPath: url.path, contents: Data(count: 1000))
+        }
+        try? fm.createDirectory(at: dir.appendingPathComponent("__MACOSX/inner"), withIntermediateDirectories: true)
+        fm.createFile(atPath: dir.appendingPathComponent("__MACOSX/inner/._p").path, contents: Data(count: 10))
+        RunLoop.main.run(until: Date().addingTimeInterval(8))
+        watcher.stop()
+        for name in ["sub/.DS_Store", "sub/._photo.jpg", "__MACOSX", "sub/photo.jpg", ".Trashes"] {
+            Swift.print(fm.fileExists(atPath: dir.appendingPathComponent(name).path) ? "reste  " : "supprimé", name)
+        }
+        Swift.print("signalés :", removed.map { ($0 as NSString).lastPathComponent }.sorted())
+    }
+
+    /// Une tâche d'entretien sans mot de passe, par l'exécuteur de l'appli (sortie en direct, code de sortie).
+    private static func maint(_ id: String) {
+        guard let task = MaintenanceTask(rawValue: id), !task.needsAdmin else { Swift.print("tâche inconnue ou avec mot de passe"); return }
+        let result = ShellJob().run(task.script(uid: getuid())) { Swift.print($0, terminator: "") }
+        Swift.print("\ncode :", result.exitCode, "annulé :", result.cancelled)
     }
 
     /// Applis installées (lecture seule) et, pour celle dont le nom contient l'argument, ses fichiers liés.
@@ -127,6 +168,24 @@ enum SelfTest {
         model.scan()
         wait(model)
         save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("main.png"))
+        // Outils : entretien, permissions (plan rempli), fichiers invisibles (analyse du faux dossier)
+        model.mode = .maintenance
+        save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("maintenance.png"))
+        model.mode = .permissions
+        model.permissions.add([home.appendingPathComponent("Downloads").path, home.appendingPathComponent("Movies").path])
+        model.permissions.fileMode = "644"
+        model.permissions.directoryMode = "755"
+        model.permissions.flags.hidden = .off
+        model.permissions.flags.locked = .off
+        model.permissions.clearQuarantine = true
+        save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("permissions.png"))
+        model.mode = .invisibles
+        model.invisibles.root = home
+        model.invisibles.startScan()
+        wait(model.invisibles)
+        model.settings.watchedFolders = []
+        save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("invisibles.png"))
+        model.mode = .clean
         for tab in SettingsTab.allCases {
             save(SettingsView(tab: tab).environmentObject(model), size: NSSize(width: 480, height: 380), to: dir.appendingPathComponent("settings-\(tab.rawValue).png"))
         }

@@ -83,7 +83,7 @@ struct SettingsView: View {
             Toggle(L("settings.login"), isOn: Binding(get: { atLogin }, set: { on in
                 if LoginAgent.set(on) { atLogin = on }
             }))
-            .socle(Socle.T.label).disabled(!model.settings.monitorEnabled)
+            .socle(Socle.T.label).disabled(!model.keepsRunningWithoutWindow)
         }
     }
 

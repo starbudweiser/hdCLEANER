@@ -40,20 +40,25 @@ struct MainView: View {
                 DevicePanel().frame(width: 200)
                 VStack(spacing: Socle.M.space3) {
                     DiskPanel()
-                    SocleSegmented(options: [Mode.clean, Mode.apps], selection: model.mode, label: { L($0 == .clean ? "mode.clean" : "mode.apps") },
+                    SocleSegmented(options: [Mode.clean, Mode.apps, Mode.maintenance, Mode.permissions, Mode.invisibles], selection: model.mode, label: { L("mode.\($0)") },
                                    onSelect: { model.mode = $0; if $0 == .apps { model.loadApps() } })
-                        .frame(width: 320).frame(maxWidth: .infinity, alignment: .leading)
-                    if model.mode == .apps {
-                        AppsView()
-                    } else if model.result == nil {
-                        WelcomePanel()
-                    } else {
-                        HStack(spacing: Socle.M.space3) {
-                            CategoryPanel().frame(width: 330)
-                            ItemsPanel()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    switch model.mode {
+                    case .apps: AppsView()
+                    case .maintenance: MaintenanceView(model: model.maintenance)
+                    case .permissions: PermissionsView(model: model.permissions)
+                    case .invisibles: InvisiblesView(model: model.invisibles)
+                    case .clean:
+                        if model.result == nil {
+                            WelcomePanel()
+                        } else {
+                            HStack(spacing: Socle.M.space3) {
+                                CategoryPanel().frame(width: 330)
+                                ItemsPanel()
+                            }
                         }
                     }
-                    FooterPanel(confirming: $confirming)
+                    if model.mode == .clean || model.mode == .apps { FooterPanel(confirming: $confirming) }
                 }
             }
             .padding(Socle.M.space3)
@@ -70,7 +75,7 @@ struct MainView: View {
     }
 }
 
-private struct Panel<Content: View>: View {
+struct Panel<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
@@ -179,7 +184,7 @@ private struct WelcomePanel: View {
 }
 
 /// Case à cocher plate Socle, à trois états.
-private struct CheckBox: View {
+struct CheckBox: View {
     enum State { case off, on, mixed }
     let state: State
     let action: () -> Void
@@ -201,7 +206,7 @@ private struct CheckBox: View {
     }
 }
 
-private struct PanelHeader: View {
+struct PanelHeader: View {
     let title: String
     let trailing: String
 

@@ -27,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSApp.mainMenu = makeMenu()
         status = MonitorStatus(model: model, open: { [weak self] in self?.showWindow() })
         model.startMonitoring()
+        model.applyWatcher()
         DistributedNotificationCenter.default().addObserver(forName: SingleInstance.showWindow, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.showWindow() }
         }
@@ -39,7 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        !model.settings.monitorEnabled
+        !model.keepsRunningWithoutWindow
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -48,7 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        if model.settings.monitorEnabled { NSApp.setActivationPolicy(.accessory) } // plus d'icône dans le Dock sans fenêtre
+        if model.keepsRunningWithoutWindow { NSApp.setActivationPolicy(.accessory) } // plus d'icône dans le Dock sans fenêtre
     }
 
     private func showWindow() {
@@ -122,7 +123,7 @@ final class MonitorStatus: NSObject {
     }
 
     private func render() {
-        guard model.settings.monitorEnabled else {
+        guard model.keepsRunningWithoutWindow else {
             if let item { NSStatusBar.system.removeStatusItem(item) }
             item = nil
             return
@@ -153,6 +154,15 @@ final class MonitorStatus: NSObject {
         button.contentTintColor = model.belowThreshold ? .systemRed : nil
         button.imagePosition = .imageLeading
         button.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)
+        guard model.settings.monitorEnabled else { // surveillance des fichiers invisibles seule : une icône sans disque
+            button.image = NSImage(systemSymbolName: "eye", accessibilityDescription: nil)
+            button.image?.isTemplate = true
+            button.title = ""
+            let text = L("watch.tooltip", model.settings.watchedFolders.count) + (model.invisibles.watchRemoved > 0 ? " · " + L("watch.removed", model.invisibles.watchRemoved) : "")
+            button.toolTip = text
+            header?.title = text
+            return
+        }
         guard let disk = model.monitoredDisk else { // volume démonté : on le dit au lieu d'afficher le disque de démarrage
             let name = URL(fileURLWithPath: model.settings.monitoredVolume).lastPathComponent
             button.title = "\(name) –"

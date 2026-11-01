@@ -3,7 +3,7 @@ import Combine
 import HdCleanerCore
 import UserNotifications
 
-enum Mode: Hashable { case clean, apps }
+enum Mode: Hashable { case clean, apps, maintenance, permissions, invisibles }
 
 enum Phase: Equatable {
     case idle
@@ -33,6 +33,11 @@ final class AppModel: ObservableObject {
     @Published private(set) var related: [JunkItem] = []
     @Published var relatedSelection = Set<String>()
 
+    let maintenance = MaintenanceModel()
+    let permissions = PermissionsModel()
+    let invisibles = InvisiblesModel()
+    private let watcher = InvisibleWatcher()
+
     let device = DeviceInfo.read()
     let home: URL
     var onMonitorChange: (() -> Void)?
@@ -53,6 +58,9 @@ final class AppModel: ObservableObject {
         self.home = home
         self.defaults = defaults
         settings = AppSettings.decode(defaults.data(forKey: Self.settingsKey))
+        watcher.onRemoved = { [weak self] removed in
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.invisibles.noteWatched(removed); self?.onMonitorChange?() } }
+        }
     }
 
     var socleTheme: Socle.Theme {
@@ -77,6 +85,7 @@ final class AppModel: ObservableObject {
         guard settings != old else { return }
         defaults.set(try? JSONEncoder().encode(settings), forKey: Self.settingsKey)
         if settings.theme != old.theme { Socle.apply(socleTheme) }
+        if settings.watchedFolders != old.watchedFolders { applyWatcher() }
         if settings.monitorEnabled != old.monitorEnabled || settings.thresholdPercent != old.thresholdPercent || settings.monitoredVolume != old.monitoredVolume {
             monitor = ThresholdMonitor()
             startMonitoring()
@@ -160,6 +169,19 @@ final class AppModel: ObservableObject {
     func setSelected(_ on: Bool, item: JunkItem) {
         if on { selection.insert(item.path) } else { selection.remove(item.path) }
     }
+
+    // MARK: Surveillance des fichiers invisibles
+
+    /// Applique la liste des dossiers surveillés (au lancement et à chaque changement).
+    func applyWatcher() {
+        watcher.update(paths: settings.watchedFolders)
+        onMonitorChange?()
+    }
+
+    var watching: Bool { !settings.watchedFolders.isEmpty }
+
+    /// Fermer la fenêtre ne quitte pas l'appli quand elle surveille le disque ou des dossiers.
+    var keepsRunningWithoutWindow: Bool { settings.monitorEnabled || watching }
 
     // MARK: Seuil
 
@@ -294,23 +316,98 @@ enum TimeMachine {
     }
 }
 
+/// Résultat d'un script : refusé (mot de passe annulé), code de sortie et texte affiché.
+struct ShellResult {
+    var cancelled = false
+    var exitCode: Int32 = 0
+    var output = ""
+    var ok: Bool { !cancelled && exitCode == 0 }
+}
+
 /// Exécute un script avec le mot de passe administrateur (boîte de dialogue du système) ; faux si la demande est refusée.
 enum AdminRunner {
     static func run(_ script: String) -> Bool {
+        !execute(script, capture: false).cancelled
+    }
+
+    /// Comme `run`, avec la sortie du script (erreurs comprises) et son code de sortie.
+    static func runCapturing(_ script: String) -> ShellResult {
+        execute(script + "\nprintf '\\n[exit %s]\\n' \"$?\"\nexit 0\n", capture: true)
+    }
+
+    private static func execute(_ script: String, capture: Bool) -> ShellResult {
+        var result = ShellResult()
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("hdcleaner-\(UUID().uuidString).sh")
-        do { try script.write(to: file, atomically: true, encoding: .utf8) } catch { return false }
+        do { try script.write(to: file, atomically: true, encoding: .utf8) } catch { result.cancelled = true; return result }
         defer { try? FileManager.default.removeItem(at: file) }
         func escaped(_ text: String) -> String { text.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") }
-        let command = "/bin/sh '\(file.path)'"
+        let command = "/bin/sh '\(file.path)' 2>&1"
         let apple = "do shell script \"\(escaped(command))\" with administrator privileges with prompt \"\(escaped(L("admin.prompt")))\""
         let process = Process()
+        let pipe = Pipe()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
         process.arguments = ["-e", apple]
-        process.standardOutput = FileHandle.nullDevice
+        process.standardOutput = capture ? pipe : FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
-        guard (try? process.run()) != nil else { return false }
+        guard (try? process.run()) != nil else { result.cancelled = true; return result }
+        let data = capture ? pipe.fileHandleForReading.readDataToEndOfFile() : Data()
         process.waitUntilExit()
-        return process.terminationStatus == 0
+        guard process.terminationStatus == 0 else { result.cancelled = true; return result }
+        var text = String(decoding: data, as: UTF8.self).replacingOccurrences(of: "\r", with: "\n")
+        if let range = text.range(of: #"\[exit (-?\d+)\]\s*$"#, options: .regularExpression) {
+            result.exitCode = Int32(text[range].filter { $0.isNumber || $0 == "-" }) ?? 0
+            text.removeSubrange(range)
+        }
+        result.output = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return result
+    }
+}
+
+/// Exécute un script sans mot de passe, en renvoyant la sortie au fur et à mesure ; annulable (le script et ses commandes).
+final class ShellJob: @unchecked Sendable {
+    private let lock = NSLock()
+    private var process: Process?
+    private var cancelled = false
+
+    var isCancelled: Bool { lock.lock(); defer { lock.unlock() }; return cancelled }
+
+    func cancel() {
+        lock.lock()
+        cancelled = true
+        let p = process
+        lock.unlock()
+        guard let p, p.isRunning else { return }
+        let kill = Process() // les commandes lancées par le script (find, chmod…) d'abord, puis le script
+        kill.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
+        kill.arguments = ["-TERM", "-P", String(p.processIdentifier)]
+        try? kill.run()
+        kill.waitUntilExit()
+        p.terminate()
+    }
+
+    func run(_ script: String, onOutput: @escaping @Sendable (String) -> Void) -> ShellResult {
+        var result = ShellResult()
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("hdcleaner-\(UUID().uuidString).sh")
+        do { try script.write(to: file, atomically: true, encoding: .utf8) } catch { result.exitCode = -1; return result }
+        defer { try? FileManager.default.removeItem(at: file) }
+        let p = Process(), pipe = Pipe()
+        p.executableURL = URL(fileURLWithPath: "/bin/sh")
+        p.arguments = [file.path]
+        p.standardOutput = pipe
+        p.standardError = pipe
+        pipe.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            if !data.isEmpty { onOutput(String(decoding: data, as: UTF8.self)) }
+        }
+        lock.lock(); process = p; lock.unlock()
+        guard (try? p.run()) != nil else { result.exitCode = -1; return result }
+        p.waitUntilExit()
+        pipe.fileHandleForReading.readabilityHandler = nil
+        let rest = pipe.fileHandleForReading.readDataToEndOfFile()
+        if !rest.isEmpty { onOutput(String(decoding: rest, as: UTF8.self)) }
+        result.exitCode = p.terminationStatus
+        result.cancelled = isCancelled
+        return result
     }
 }
 
