@@ -16,5 +16,5 @@ Personal macOS disk cleaner, a take on AppYogi's Disk Cleaner (Pro Disk Cleaner)
 - Languages (fr, en, es, it): `tools/strings_table.py` → `python3 tools/gen_strings.py`. Icon: `assets/make_icon.py`. Logo color ("hd" of the name): violet #A78BFA (`Brand`).
 
 ## Open points
-- Administrator-password cleaning (osascript dialog), Full Disk Access prompts, notifications, the login agent and a real uninstall are not tested in the installed app. Real mouse clicks on the category checkboxes could not be synthesised in the background (AXPress works).
-- No GitHub `origin` yet.
+- Tested for real by the author (Nov 2026): administrator-password cleaning and the category checkboxes work. Still untested: notifications, the login agent, a real uninstall, Full Disk Access prompts.
+- GitHub: starbudweiser/hdCLEANER (`origin`, `main`).
