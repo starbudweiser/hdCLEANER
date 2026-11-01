@@ -218,6 +218,7 @@
 "perm.repairConfirmTitle" = "Riparare gli accessi?";
 "perm.repairConfirmBody" = "Verranno riparati gli accessi di %ld destinazione/i e di tutto il loro contenuto.";
 "invisibles.keptIcons" = "%ld conservato/i: icona personalizzata";
+"splash.subtitle" = "Libera il disco";
 "scan.welcome" = "Analizza il disco per vedere cosa si può liberare.";
 "scan.welcomeHelp" = "L'analisi non modifica nulla.";
 "scan.start" = "Analizza";

@@ -218,6 +218,7 @@
 "perm.repairConfirmTitle" = "¿Reparar los accesos?";
 "perm.repairConfirmBody" = "Se repararán los accesos de %ld destino(s) y de todo su contenido.";
 "invisibles.keptIcons" = "%ld conservado(s): icono personalizado";
+"splash.subtitle" = "Libera tu disco";
 "scan.welcome" = "Analiza tu disco para ver qué se puede liberar.";
 "scan.welcomeHelp" = "El análisis no modifica nada.";
 "scan.start" = "Analizar";

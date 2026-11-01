@@ -218,6 +218,7 @@
 "perm.repairConfirmTitle" = "Repair access?";
 "perm.repairConfirmBody" = "Access to %ld target(s) and everything inside will be repaired.";
 "invisibles.keptIcons" = "%ld kept: custom icon";
+"splash.subtitle" = "Free your disk";
 "scan.welcome" = "Scan your disk to see what can be freed.";
 "scan.welcomeHelp" = "Scanning changes nothing.";
 "scan.start" = "Scan";

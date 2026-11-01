@@ -34,9 +34,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if background {
             NSApp.setActivationPolicy(.accessory)
         } else {
+            startSplash()
             NSApp.setActivationPolicy(.regular)
             showWindow()
         }
+    }
+
+    /// Splash Socle (4 s, fenêtre à t = 2 s) à chaque lancement avec fenêtre ; pas pour l'agent de connexion ni pour les essais silencieux.
+    private func startSplash() {
+        #if HDCLEANER_SELFTEST
+        if ProcessInfo.processInfo.environment["HDCLEANER_QUIET"] != nil { return }
+        #endif
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        Splash.shared.start(Splash.Config(title: "hdCLEANER", accentLetters: 2, subtitle: L("splash.subtitle"), footer: version.isEmpty ? "" : "v" + version,
+                                          iconView: AnyView(AnimatedDiskMark()), accent: Brand.color))
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -69,7 +80,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         #endif
         NSApp.setActivationPolicy(quiet ? .accessory : .regular)
         if window == nil {
-            let hosting = NSHostingController(rootView: MainView().environmentObject(model))
+            let hosting = NSHostingController(rootView: MainView().environmentObject(model).splashGated())
             let w = NSWindow(contentViewController: hosting)
             w.styleMask = [.titled, .closable, .miniaturizable, .resizable]
             w.title = "hdCLEANER"

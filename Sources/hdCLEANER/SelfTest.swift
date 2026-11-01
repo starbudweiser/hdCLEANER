@@ -189,6 +189,12 @@ enum SelfTest {
         model.scan()
         wait(model)
         save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("main.png"))
+        // Splash : image de départ et image d'arrivée
+        let splashConfig = Splash.Config(title: "hdCLEANER", accentLetters: 2, subtitle: L("splash.subtitle"), footer: "v1.0.0", iconView: AnyView(DiskMark(on: true, animated: false)), accent: Brand.color)
+        save(Splash.previewView(splashConfig, arrived: true), size: Splash.size, to: dir.appendingPathComponent("splash.png"))
+        let startConfig = Splash.Config(title: "hdCLEANER", accentLetters: 2, subtitle: L("splash.subtitle"), footer: "v1.0.0", iconView: AnyView(DiskMark(on: false, animated: false)), accent: Brand.color)
+        save(DiskMark(on: false, animated: false), size: NSSize(width: 108, height: 108), to: dir.appendingPathComponent("diskmark-start.png"))
+        _ = startConfig
         // Outils : entretien, permissions (plan rempli), fichiers invisibles (analyse du faux dossier)
         model.mode = .maintenance
         save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("maintenance.png"))

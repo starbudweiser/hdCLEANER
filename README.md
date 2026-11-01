@@ -17,7 +17,7 @@ hdCLEANER is a personal take on AppYogi's *Disk Cleaner* — not affiliated with
 - **Administrator password** asked once per cleaning, only when system items are ticked (standard macOS dialog).
 - **Exclusions**: right-click a row to stop suggesting it.
 - **Threshold monitor**: a notification when free space drops below a percentage, a menu bar icon that stays after the window is closed, optional start at login.
-- The window remembers its size and opens centered.
+- The window remembers its size and opens centered. Socle animated splash at launch (4 s, window opens at 2 s; fixed image with "Reduce motion"), with an animated hard-disk icon, and a faint hard-disk platter watermark behind the machine column.
 - Dark, light or system theme; French, English, Spanish and Italian (follows the system language, English otherwise).
 
 Some folders (Mail, Safari, Containers…) need *Full Disk Access*; the app says so on the category instead of showing an empty list.

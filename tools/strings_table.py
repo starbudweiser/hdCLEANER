@@ -229,6 +229,7 @@ T = [
 ("perm.repairConfirmTitle", "Réparer les accès ?", "Repair access?", "¿Reparar los accesos?", "Riparare gli accessi?"),
 ("perm.repairConfirmBody", "Les accès de %ld cible(s) et de tout leur contenu vont être réparés.", "Access to %ld target(s) and everything inside will be repaired.", "Se repararán los accesos de %ld destino(s) y de todo su contenido.", "Verranno riparati gli accessi di %ld destinazione/i e di tutto il loro contenuto."),
 ("invisibles.keptIcons", "%ld conservé(s) : icône personnalisée", "%ld kept: custom icon", "%ld conservado(s): icono personalizado", "%ld conservato/i: icona personalizzata"),
+("splash.subtitle", "Libérez votre disque", "Free your disk", "Libera tu disco", "Libera il disco"),
 # --- analyse et nettoyage
 ("scan.welcome", "Analysez votre disque pour voir ce qui peut être libéré.", "Scan your disk to see what can be freed.", "Analiza tu disco para ver qué se puede liberar.", "Analizza il disco per vedere cosa si può liberare."),
 ("scan.welcomeHelp", "L'analyse ne modifie rien.", "Scanning changes nothing.", "El análisis no modifica nada.", "L'analisi non modifica nulla."),

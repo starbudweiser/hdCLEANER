@@ -109,6 +109,8 @@ private struct DevicePanel: View {
             }
             .padding(Socle.M.space3)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(DiskWatermark())
+            .clipShape(RoundedRectangle(cornerRadius: Socle.M.radius))
         }
     }
 }
