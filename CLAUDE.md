@@ -15,7 +15,7 @@ Personal macOS disk cleaner, a take on AppYogi's Disk Cleaner (Pro Disk Cleaner)
 - Leftovers: folder named like a bundle id, vendor not matching any installed/running app, not Apple; never preselected.
 
 ## Commands
-- Tests: `swift test`. App: `./build.sh` → `~/Applications/Home Applications/hdCLEANER.app`.
+- Tests: `swift test`. App: `./build.sh` → `~/Applications/Applications Personnelles/hdCLEANER.app`.
 - Real checks: `SELFTEST=1 ./build.sh`, then `build/hdCLEANER.app/Contents/MacOS/hdCLEANER --selftest library|apps <name>|e2e <fake home>|exclude <fake home>|watch <dir>|maint <non-admin task>|trash <file>|render <dir>` (`HDCLEANER_HOME` = fake home, also for launching the GUI; `HDCLEANER_QUIET=1` keeps the window behind, no focus; drive it with computer-use `app_*`).
 - Languages (fr, en, es, it): `tools/strings_table.py` → `python3 tools/gen_strings.py`. Icon: `assets/make_icon.py`. Logo color ("hd" of the name): violet #A78BFA (`Brand`).
 
