@@ -36,6 +36,52 @@ public enum InvisibleKind: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+/// Fichiers AppleDouble (« ._nom ») : sur un disque non-Apple, c'est là que macOS range l'icône personnalisée d'un fichier ou d'un dossier.
+public enum AppleDouble {
+    static let magic: UInt32 = 0x0005_1607
+    static let finderInfoEntry: UInt32 = 9
+    static let hasCustomIconFlag: UInt16 = 0x0400
+
+    private static func be32(_ d: Data, _ i: Int) -> UInt32 { d[d.startIndex + i..<d.startIndex + i + 4].reduce(0) { $0 << 8 | UInt32($1) } }
+
+    /// Les « Finder Info » portent le drapeau « a une icône personnalisée » (kHasCustomIcon).
+    public static func hasCustomIcon(_ data: Data) -> Bool {
+        guard data.count >= 26, be32(data, 0) == magic else { return false }
+        let entries = Int(data[data.startIndex + 24]) << 8 | Int(data[data.startIndex + 25])
+        for i in 0..<min(entries, 32) {
+            let at = 26 + i * 12
+            guard data.count >= at + 12 else { break }
+            guard be32(data, at) == finderInfoEntry else { continue }
+            let offset = Int(be32(data, at + 4)), length = Int(be32(data, at + 8))
+            guard length >= 10, data.count >= offset + 10 else { return false }
+            let flags = UInt16(data[data.startIndex + offset + 8]) << 8 | UInt16(data[data.startIndex + offset + 9])
+            return flags & hasCustomIconFlag != 0
+        }
+        return false
+    }
+
+    public static func hasCustomIcon(atPath path: String) -> Bool {
+        guard let handle = FileHandle(forReadingAtPath: path) else { return false }
+        defer { try? handle.close() }
+        return hasCustomIcon((try? handle.read(upToCount: 4096)) ?? Data())
+    }
+}
+
+extension InvisibleKind {
+    /// Ce qui porte une icône personnalisée n'est jamais proposé : le fichier « Icon\r », son double « ._Icon\r », les « ._ » dont les
+    /// Finder Info portent le drapeau d'icône personnalisée, et un dossier « .AppleDouble » qui en contient.
+    public static func keepsCustomIcon(path: String, isDirectory: Bool) -> Bool {
+        let name = (path as NSString).lastPathComponent
+        if name == "._Icon\r" || name == "Icon\r" { return true }
+        if name.hasPrefix("._"), !isDirectory { return AppleDouble.hasCustomIcon(atPath: path) }
+        if name == ".AppleDouble", isDirectory {
+            let children = (try? FileManager.default.contentsOfDirectory(atPath: path)) ?? []
+            return children.contains { AppleDouble.hasCustomIcon(atPath: (path as NSString).appendingPathComponent($0)) }
+        }
+        return false
+    }
+}
+
 public struct InvisibleItem: Identifiable, Hashable, Sendable {
     public var id: String { path }
     public let path: String
@@ -58,6 +104,8 @@ public struct InvisibleScan: Sendable {
     public var items: [InvisibleKind: [InvisibleItem]] = [:]
     public var scanned = 0
     public var cancelled = false
+    /// Fichiers `._` laissés parce qu'ils portent une icône personnalisée.
+    public var keptCustomIcons = 0
 
     public init() {}
 
@@ -78,6 +126,10 @@ public enum InvisibleScanner {
                 guard entry.level > 0, !entry.isSymlink else { return .descend }
                 let atRoot = (entry.path as NSString).deletingLastPathComponent == rootPath
                 guard let kind = InvisibleKind.classify(name: (entry.path as NSString).lastPathComponent, isDirectory: entry.isDirectory, atRoot: atRoot) else { return .descend }
+                if kind == .appleDouble, InvisibleKind.keepsCustomIcon(path: entry.path, isDirectory: entry.isDirectory) {
+                    result.keptCustomIcons += 1
+                    return entry.isDirectory ? .skip : .descend
+                }
                 let bytes = entry.isDirectory ? DiskSize.bytes(of: URL(fileURLWithPath: entry.path), cancel: cancel) : entry.allocated
                 result.items[kind, default: []].append(InvisibleItem(path: entry.path, size: bytes, kind: kind, isDirectory: entry.isDirectory))
                 return .skip // un dossier invisible est compté en bloc
@@ -102,7 +154,7 @@ public enum InvisibleCleaner {
             let atRoot = parent == base
             var isDir: ObjCBool = false
             let exists = FileManager.default.fileExists(atPath: path, isDirectory: &isDir)
-            guard exists, isDir.boolValue == item.isDirectory else { return false }
+            guard exists, isDir.boolValue == item.isDirectory, !InvisibleKind.keepsCustomIcon(path: path, isDirectory: item.isDirectory) else { return false }
             return InvisibleKind.classify(name: (path as NSString).lastPathComponent, isDirectory: item.isDirectory, atRoot: atRoot) == item.kind
         }
         return false

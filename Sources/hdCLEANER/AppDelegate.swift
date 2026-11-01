@@ -48,7 +48,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         return true
     }
 
+    func windowDidResize(_ notification: Notification) {
+        if let w = notification.object as? NSWindow, !w.inLiveResize { WindowSize.save(w) }
+    }
+
+    func windowDidEndLiveResize(_ notification: Notification) {
+        if let w = notification.object as? NSWindow { WindowSize.save(w) }
+    }
+
     func windowWillClose(_ notification: Notification) {
+        if let w = notification.object as? NSWindow { WindowSize.save(w) }
         if model.keepsRunningWithoutWindow { NSApp.setActivationPolicy(.accessory) } // plus d'icône dans le Dock sans fenêtre
     }
 
@@ -64,8 +73,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let w = NSWindow(contentViewController: hosting)
             w.styleMask = [.titled, .closable, .miniaturizable, .resizable]
             w.title = "hdCLEANER"
-            w.setContentSize(NSSize(width: 1080, height: 680))
-            w.contentMinSize = NSSize(width: 980, height: 600)
+            w.contentMinSize = WindowSize.minimum
+            w.setContentSize(WindowSize.loaded())
             w.isReleasedWhenClosed = false
             w.delegate = self
             w.socleCenter()
@@ -104,6 +113,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @objc private func openAbout() { About.show() }
     @objc private func openSettings() { SettingsWindow.show(model: model) }
+}
+
+/// Taille de la fenêtre principale : retenue d'un lancement à l'autre ; la position, elle, est recalculée (centrée) à chaque lancement.
+enum WindowSize {
+    static let minimum = NSSize(width: 980, height: 600)
+    static let fallback = NSSize(width: 1080, height: 680)
+    private static let key = "windowSize"
+
+    static func loaded() -> NSSize {
+        guard let text = UserDefaults.standard.string(forKey: key) else { return fallback }
+        let parts = text.split(separator: ",").compactMap { Double($0) }
+        guard parts.count == 2 else { return fallback }
+        let screen = (NSScreen.main ?? NSScreen.screens.first)?.visibleFrame.size ?? NSSize(width: 4000, height: 3000)
+        // Jamais plus petite que le minimum, jamais plus grande que l'écran (écran changé depuis).
+        return NSSize(width: min(max(parts[0], minimum.width), max(screen.width, minimum.width)), height: min(max(parts[1], minimum.height), max(screen.height, minimum.height)))
+    }
+
+    /// Pas en plein écran ni zoomée : ces tailles-là ne sont pas un choix de l'utilisateur.
+    @MainActor static func save(_ window: NSWindow) {
+        guard !window.styleMask.contains(.fullScreen), !window.isZoomed else { return }
+        let size = window.contentRect(forFrameRect: window.frame).size
+        UserDefaults.standard.set("\(Int(size.width)),\(Int(size.height))", forKey: key)
+    }
 }
 
 /// Icône de barre de menus, visible seulement quand la surveillance est active.

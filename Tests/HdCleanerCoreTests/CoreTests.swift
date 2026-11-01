@@ -558,4 +558,87 @@ final class CoreTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: temp.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: keep.path))
     }
+
+    // MARK: Icônes personnalisées
+
+    /// Un fichier AppleDouble minimal avec des Finder Info dont le drapeau d'icône personnalisée est (ou non) posé.
+    private func appleDouble(customIcon: Bool) -> Data {
+        var d = Data([0x00, 0x05, 0x16, 0x07, 0x00, 0x02, 0x00, 0x00]) + Data(count: 16) + Data([0x00, 0x01])
+        d += Data([0, 0, 0, 9, 0, 0, 0, 38, 0, 0, 0, 32]) // une entrée : Finder Info (id 9), à l'octet 38, 32 octets
+        var info = Data(count: 32)
+        if customIcon { info[8] = 0x04 }
+        return d + info
+    }
+
+    func testAppleDoubleCustomIconFlag() {
+        XCTAssertTrue(AppleDouble.hasCustomIcon(appleDouble(customIcon: true)))
+        XCTAssertFalse(AppleDouble.hasCustomIcon(appleDouble(customIcon: false)))
+        XCTAssertFalse(AppleDouble.hasCustomIcon(Data(count: 8000)))
+        XCTAssertFalse(AppleDouble.hasCustomIcon(Data()))
+    }
+
+    func testCustomIconsAreKeptByScanAndCleaner() throws {
+        let root = home.appendingPathComponent("vol")
+        for (name, icon) in [("vol/._dossier", true), ("vol/._vide", false)] {
+            let url = home.appendingPathComponent(name)
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try appleDouble(customIcon: icon).write(to: url)
+        }
+        try file("vol/Icon\r"); try file("vol/._Icon\r"); try file("vol/.DS_Store")
+        try FileManager.default.createDirectory(at: root.appendingPathComponent("sub/.AppleDouble"), withIntermediateDirectories: true)
+        try appleDouble(customIcon: true).write(to: root.appendingPathComponent("sub/.AppleDouble/x"))
+        let scan = InvisibleScanner.scan(roots: [root])
+        XCTAssertEqual((scan.items[.appleDouble] ?? []).map { ($0.path as NSString).lastPathComponent }, ["._vide"])
+        XCTAssertEqual(scan.keptCustomIcons, 3, "._dossier, ._Icon\\r et sub/.AppleDouble")
+        // Même si un élément « ._dossier » est présenté au nettoyeur, il est refusé.
+        let forced = InvisibleItem(path: root.appendingPathComponent("._dossier").path, size: 1, kind: .appleDouble, isDirectory: false)
+        XCTAssertFalse(InvisibleCleaner.isSafe(forced, roots: [root]))
+        let report = InvisibleCleaner.clean((scan.items[.appleDouble] ?? []) + (scan.items[.dsStore] ?? []) + [forced], roots: [root])
+        XCTAssertEqual(report.count, 2)
+        XCTAssertEqual(report.failures.count, 1)
+        for kept in ["vol/._dossier", "vol/Icon\r", "vol/._Icon\r", "vol/sub/.AppleDouble/x"] { XCTAssertTrue(FileManager.default.fileExists(atPath: home.appendingPathComponent(kept).path), kept) }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: home.appendingPathComponent("vol/._vide").path))
+        // La surveillance applique la même règle.
+        let again = InvisibleCleaner.cleanReported(paths: [root.appendingPathComponent("._dossier").path], roots: [root])
+        XCTAssertEqual(again, [])
+    }
+
+    // MARK: Réparation des accès
+
+    func testDiagnoseAndRepairAccess() throws {
+        let a = try file("proj/a.txt"), b = try file("proj/sub/b.txt"), c = try file("proj/ok.txt")
+        let dir = a.deletingLastPathComponent(), sub = b.deletingLastPathComponent()
+        try FileManager.default.setAttributes([.posixPermissions: 0o400], ofItemAtPath: a.path) // lecture seule
+        try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: sub.path) // dossier sans écriture
+        XCTAssertEqual(try runShell("/usr/bin/chflags uchg '\(b.path)'\n"), "")
+        let before = AccessRepair.diagnose(targets: [dir.path])
+        XCTAssertEqual(before.examined, 5, "proj, a, ok, sub, b")
+        XCTAssertEqual(before.notOwned, 0)
+        XCTAssertEqual(before.locked, 1)
+        XCTAssertEqual(before.notUsable, 2, "a.txt et sub")
+        XCTAssertEqual(before.problems, 3, "a, sub et b (b est verrouillé et sa mère est en lecture seule)")
+        XCTAssertEqual(Set(before.sample), [a.path, sub.path, b.path])
+        // Comme si tout appartenait à un autre compte :
+        XCTAssertEqual(AccessRepair.diagnose(targets: [dir.path], uid: 0).notOwned, 5)
+
+        let plan = AccessRepair.plan(targets: [dir.path], user: NSUserName())
+        XCTAssertEqual(plan.issues(home: URL(fileURLWithPath: "/Users/x")).filter { if case .forbiddenTarget = $0 { return false }; return true }, [])
+        let out = try runShell(plan.script())
+        XCTAssertTrue(out.contains("FIN"), out)
+        let after = AccessRepair.diagnose(targets: [dir.path])
+        XCTAssertEqual(after.problems, 0, "\(after)")
+        XCTAssertNoThrow(try FileManager.default.removeItem(at: dir), "tout est de nouveau supprimable")
+        _ = c
+    }
+
+    func testAccessRepairNeverTouchesContentOrOthersRights() throws {
+        let f = try file("proj/a.txt")
+        try "contenu".write(to: f, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o440], ofItemAtPath: f.path)
+        _ = try runShell(AccessRepair.plan(targets: [f.deletingLastPathComponent().path], user: NSUserName()).script())
+        XCTAssertEqual(try String(contentsOf: f, encoding: .utf8), "contenu")
+        XCTAssertEqual(try mode(f), 0o640, "u+rw ajoute seulement le droit du propriétaire ; groupe et autres inchangés")
+        XCTAssertTrue(AccessRepair.needsAdmin(output: "chown: /x: Operation not permitted"))
+        XCTAssertFalse(AccessRepair.needsAdmin(output: "FIN"))
+    }
 }
