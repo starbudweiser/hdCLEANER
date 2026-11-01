@@ -11,6 +11,12 @@ public struct ScanContext: Sendable {
     public var installed: Set<String> = []
     public var isRegistered: @Sendable (String) -> Bool = { _ in false }
     public var screenshotFolder: URL?
+    /// Racine du système (« / ») : les tests la remplacent par un dossier d'essai.
+    public var systemRoot = URL(fileURLWithPath: "/")
+    /// Dates des instantanés Time Machine locaux (AAAA-MM-JJ-HHMMSS).
+    public var snapshots: @Sendable () -> [String] = { [] }
+    /// Codes des langues à garder dans les applis (voir `Languages.kept`).
+    public var keptLanguages: Set<String> = ["en"]
 
     public init(home: URL) { self.home = home }
 }
@@ -19,7 +25,7 @@ public enum Scanner {
     /// Ordre d'attribution : chaque chemin n'appartient qu'à la première catégorie qui le réclame.
     static let order: [JunkCategory] = [
         .trash, .browserData, .devCaches, .leftovers, .appCaches, .appLogs, .iosBackups, .iosPhotoCache, .musicCache, .iosUpdates,
-        .mailDownloads, .installers, .screenshots, .downloads, .largeFiles,
+        .mailDownloads, .installers, .screenshots, .downloads, .largeFiles, .systemCaches, .systemLogs, .snapshots, .languages,
     ]
 
     /// Caches de navigateurs seulement : jamais historique, cookies ni mots de passe.
@@ -53,6 +59,7 @@ public enum Scanner {
     static let installerExtensions: Set<String> = ["dmg", "pkg", "mpkg", "iso", "xip"]
     static let screenshotExtensions: Set<String> = ["png", "jpg", "jpeg", "heic", "tiff"]
     static let screenshotPrefixes = ["capture d’écran", "capture d'écran", "screenshot", "screen shot", "captura de pantalla", "istantanea schermo", "bildschirmfoto"]
+    static let macInstallerPrefixes = ["Install macOS", "Install OS X", "Install Mac OS X"]
     static let vendorRoots: Set<String> = ["com", "org", "net", "io", "app", "co", "dev", "de", "fr", "uk", "jp", "ai", "me", "tv", "us"]
 
     public static func scan(_ context: ScanContext, cancel: CancelFlag = CancelFlag(), progress: @Sendable (JunkCategory, Double) -> Void = { _, _ in }) -> ScanResult {
@@ -64,6 +71,21 @@ public enum Scanner {
         }
         walk.result.items = walk.result.items.mapValues { $0.sorted { $0.size > $1.size } }
         return walk.result
+    }
+
+    /// Journal système archivé (compressé ou numéroté) : jamais le journal en cours.
+    public static func isRotatedLog(_ name: String) -> Bool {
+        if ["gz", "bz2", "xz", "zip"].contains((name as NSString).pathExtension.lowercased()) { return true }
+        return name.range(of: #"\.\d+$"#, options: .regularExpression) != nil
+    }
+
+    /// Nom d'appli d'un dossier de Containers ou de Group Containers : « group.com.x.y » ou « TEAMID123.com.x.y » → « com.x.y ».
+    public static func bundleName(fromContainer name: String) -> String {
+        if name.hasPrefix("group.") { return String(name.dropFirst("group.".count)) }
+        if let dot = name.firstIndex(of: "."), name[..<dot].count == 10, name[..<dot].allSatisfy({ $0.isUppercase || $0.isNumber }) {
+            return String(name[name.index(after: dot)...])
+        }
+        return name
     }
 
     /// Dossier à l'identifiant d'une appli disparue ? Prudent : le moindre lien avec une appli présente (même éditeur) l'écarte.
@@ -106,31 +128,26 @@ private struct Walk {
         }
     }
 
-    private func size(of url: URL) -> Int64 {
-        let keys: Set<URLResourceKey> = [.isDirectoryKey, .isSymbolicLinkKey, .totalFileAllocatedSizeKey, .fileAllocatedSizeKey]
-        guard let values = try? url.resourceValues(forKeys: keys) else { return 0 }
-        func bytes(_ v: URLResourceValues) -> Int64 { Int64(v.totalFileAllocatedSize ?? v.fileAllocatedSize ?? 0) }
-        if values.isSymbolicLink == true || values.isDirectory != true { return bytes(values) }
-        var total: Int64 = 0
-        guard let walker = fm.enumerator(at: url, includingPropertiesForKeys: Array(keys), options: [], errorHandler: { _, _ in true }) else { return 0 }
-        for case let child as URL in walker {
-            if cancel.isCancelled { break }
-            if let v = try? child.resourceValues(forKeys: keys), v.isDirectory != true { total += bytes(v) }
-        }
-        return total
+    private func size(of url: URL) -> Int64 { DiskSize.bytes(of: url, cancel: cancel) }
+
+    /// Contenu d'un dossier sans signaler les refus (applis, dossiers sans enjeu).
+    private func list(_ dir: URL) -> [URL] {
+        (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
     }
+
+    private func sys(_ relative: String) -> URL { context.systemRoot.appendingPathComponent(relative) }
 
     private func running(_ names: String...) -> Bool {
         names.contains { context.running.contains($0.lowercased()) }
     }
 
-    private mutating func add(_ url: URL, _ category: JunkCategory, inUse: Bool = false, knownSize: Int64? = nil) {
+    private mutating func add(_ url: URL, _ category: JunkCategory, inUse: Bool = false, knownSize: Int64? = nil, admin: Bool = false, parts: [String] = []) {
         let path = url.standardizedFileURL.path
         guard !cancel.isCancelled, !claimed.contains(path), !context.excluded.contains(path) else { return }
         let bytes = knownSize ?? size(of: url)
         guard bytes > 0 else { return }
         claimed.insert(path)
-        result.items[category, default: []].append(JunkItem(path: path, size: bytes, category: category, inUse: inUse))
+        result.items[category, default: []].append(JunkItem(path: path, size: bytes, category: category, inUse: inUse, admin: admin, parts: parts))
     }
 
     mutating func run(_ category: JunkCategory) {
@@ -156,6 +173,10 @@ private struct Walk {
         case .screenshots: screenshots()
         case .downloads: addChildren(at("Downloads"), category)
         case .largeFiles: largeFiles()
+        case .systemCaches: systemCaches()
+        case .systemLogs: systemLogs()
+        case .snapshots: snapshots()
+        case .languages: languages()
         }
     }
 
@@ -179,17 +200,22 @@ private struct Walk {
             let parts = id.split(separator: ".")
             return parts.count >= 3 ? parts[0...1].joined(separator: ".") : nil
         })
-        let roots = ["Library/Application Support", "Library/Caches", "Library/Preferences", "Library/Saved Application State", "Library/Logs", "Library/HTTPStorages", "Library/WebKit", "Library/Cookies"]
+        let roots = ["Library/Application Support", "Library/Caches", "Library/Preferences", "Library/Saved Application State", "Library/Logs", "Library/HTTPStorages", "Library/WebKit", "Library/Cookies",
+                     "Library/Containers", "Library/Group Containers", "Library/Application Scripts"]
         for root in roots {
             for url in children(at(root), for: .leftovers) ?? [] {
                 var name = url.lastPathComponent
                 for suffix in [".plist", ".savedState", ".binarycookies"] where name.hasSuffix(suffix) { name.removeLast(suffix.count) }
+                if root.contains("Containers") || root.contains("Application Scripts") { name = Scanner.bundleName(fromContainer: name) }
                 if Scanner.isLeftover(name, context: context, vendors: vendors) { add(url, .leftovers) }
             }
         }
     }
 
     private mutating func installers() {
+        for app in list(sys("Applications")) where app.pathExtension == "app" && Scanner.macInstallerPrefixes.contains(where: app.lastPathComponent.hasPrefix) {
+            add(app, .installers, admin: true)
+        }
         for root in ["Downloads", "Desktop", "Documents"] {
             guard children(at(root), for: .installers) != nil,
                   let walker = fm.enumerator(at: at(root), includingPropertiesForKeys: [.isRegularFileKey], options: [.skipsPackageDescendants, .skipsHiddenFiles], errorHandler: { _, _ in true })
@@ -227,6 +253,51 @@ private struct Walk {
             guard let v = try? url.resourceValues(forKeys: Set(keys)), v.isRegularFile == true else { continue }
             let bytes = Int64(v.totalFileAllocatedSize ?? 0)
             if bytes >= context.largeFileMinimum { add(url, .largeFiles, knownSize: bytes) }
+        }
+    }
+
+    private mutating func systemCaches() {
+        for url in children(sys("Library/Caches"), for: .systemCaches) ?? [] {
+            let name = url.lastPathComponent
+            if name.hasPrefix("com.apple.") || Scanner.protectedCaches.contains(name) { continue }
+            add(url, .systemCaches, inUse: context.running.contains(name.lowercased()), admin: true)
+        }
+    }
+
+    private mutating func systemLogs() {
+        for url in children(sys("Library/Logs"), for: .systemLogs) ?? [] {
+            if PathGuard.systemLogFolders.contains(url.lastPathComponent) {
+                for child in children(url, for: .systemLogs) ?? [] { add(child, .systemLogs, admin: true) }
+            } else {
+                add(url, .systemLogs, admin: true)
+            }
+        }
+        for url in children(sys("var/log"), for: .systemLogs) ?? [] where Scanner.isRotatedLog(url.lastPathComponent) {
+            add(url, .systemLogs, admin: true)
+        }
+    }
+
+    /// Leur taille n'est pas connue : macOS ne la donne pas sans les monter.
+    private mutating func snapshots() {
+        for date in context.snapshots() where AdminScript.isSnapshotDate(date) {
+            result.items[.snapshots, default: []].append(JunkItem(path: JunkItem.snapshotPrefix + date, size: 0, category: .snapshots))
+        }
+    }
+
+    /// Applis tierces seulement : ni Apple, ni App Store (leur signature ne doit pas bouger), ni appli ouverte.
+    private mutating func languages() {
+        for dir in [sys("Applications"), context.home.appendingPathComponent("Applications")] {
+            for app in list(dir) where app.pathExtension == "app" {
+                if cancel.isCancelled { return }
+                let info = NSDictionary(contentsOf: app.appendingPathComponent("Contents/Info.plist"))
+                guard let id = (info?["CFBundleIdentifier"] as? String)?.lowercased(), !id.hasPrefix("com.apple."),
+                      !fm.fileExists(atPath: app.appendingPathComponent("Contents/_MASReceipt").path) else { continue }
+                let all = list(app.appendingPathComponent("Contents/Resources")).filter { $0.pathExtension == "lproj" }
+                let removable = all.filter { Languages.isRemovable($0.lastPathComponent, kept: context.keptLanguages) }
+                guard !removable.isEmpty, removable.count < all.count else { continue }
+                add(app, .languages, inUse: context.running.contains(id), knownSize: removable.reduce(0) { $0 + size(of: $1) },
+                    admin: true, parts: removable.map { $0.standardizedFileURL.path }.sorted())
+            }
         }
     }
 }

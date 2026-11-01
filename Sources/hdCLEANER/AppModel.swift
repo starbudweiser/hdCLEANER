@@ -3,6 +3,8 @@ import Combine
 import HdCleanerCore
 import UserNotifications
 
+enum Mode: Hashable { case clean, apps }
+
 enum Phase: Equatable {
     case idle
     case scanning(JunkCategory, Double)
@@ -20,6 +22,13 @@ final class AppModel: ObservableObject {
     @Published private(set) var report: CleanReport?
     @Published var selection = Set<String>()
     @Published var category = JunkCategory.appCaches
+    @Published var mode = Mode.clean
+    @Published private(set) var apps: [AppEntry] = []
+    @Published private(set) var loadingApps = false
+    @Published private(set) var sizesReady = false
+    @Published private(set) var selectedApp: AppEntry?
+    @Published private(set) var related: [JunkItem] = []
+    @Published var relatedSelection = Set<String>()
 
     let device = DeviceInfo.read()
     let home: URL
@@ -28,7 +37,14 @@ final class AppModel: ObservableObject {
     private var timer: Timer?
     private var cancel = CancelFlag()
 
-    init(home: URL = FileManager.default.homeDirectoryForCurrentUser) {
+    nonisolated static var defaultHome: URL {
+        #if HDCLEANER_SELFTEST
+        if let path = ProcessInfo.processInfo.environment["HDCLEANER_HOME"] { return URL(fileURLWithPath: path) }
+        #endif
+        return FileManager.default.homeDirectoryForCurrentUser
+    }
+
+    init(home: URL = AppModel.defaultHome) {
         self.home = home
         settings = AppSettings.decode(UserDefaults.standard.data(forKey: Self.settingsKey))
     }
@@ -48,7 +64,7 @@ final class AppModel: ObservableObject {
     var selectedItems: [JunkItem] { (result?.all ?? []).filter { selection.contains($0.path) } }
 
     func total(ofSelected items: [JunkItem], _ disposal: Disposal) -> Int64 {
-        items.filter { $0.category.disposal == disposal }.reduce(0) { $0 + $1.size }
+        items.filter { $0.disposal == disposal }.reduce(0) { $0 + $1.size }
     }
 
     private func settingsChanged(_ old: AppSettings) {
@@ -63,30 +79,17 @@ final class AppModel: ObservableObject {
 
     // MARK: Analyse
 
-    private func context() -> ScanContext {
-        var c = ScanContext(home: home)
-        c.largeFileMinimum = Int64(settings.largeFileMinimumMB) * 1_000_000
-        c.excluded = Set(settings.excludedPaths)
-        let apps = NSWorkspace.shared.runningApplications
-        c.running = Set(apps.compactMap { $0.bundleIdentifier?.lowercased() } + apps.compactMap { $0.localizedName?.lowercased() })
-        c.installed = InstalledApps.bundleIDs()
-        c.isRegistered = { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil }
-        if let location = UserDefaults(suiteName: "com.apple.screencapture")?.string(forKey: "location") {
-            c.screenshotFolder = URL(fileURLWithPath: (location as NSString).expandingTildeInPath)
-        }
-        return c
-    }
-
     func scan() {
         guard !busy else { return }
         report = nil
         let flag = CancelFlag()
         cancel = flag
         phase = .scanning(.appCaches, 0)
-        let context = context()
+        let home = home, settings = settings, running = ScanContext.runningNames()
         Task {
             let found = await Task.detached(priority: .userInitiated) {
-                Scanner.scan(context, cancel: flag) { category, part in
+                // Lecture des applis installées et des instantanés : hors du fil principal pour ne pas figer la fenêtre.
+                Scanner.scan(ScanContext.live(home: home, settings: settings, running: running), cancel: flag) { category, part in
                     Task { @MainActor [weak self] in
                         if case .scanning = self?.phase { self?.phase = .scanning(category, part) }
                     }
@@ -115,7 +118,7 @@ final class AppModel: ObservableObject {
         let home = home
         Task {
             let done = await Task.detached(priority: .userInitiated) {
-                Cleaner.clean(items, home: home, cancel: flag) { part in
+                Cleaner.clean(items, home: home, cancel: flag, runAdmin: AdminRunner.run) { part in
                     Task { @MainActor [weak self] in
                         if case .cleaning = self?.phase { self?.phase = .cleaning(part) }
                     }
@@ -124,7 +127,7 @@ final class AppModel: ObservableObject {
             phase = .idle
             report = done
             let failed = Set(done.failures)
-            let gone = Set(items.map(\.path)).subtracting(failed).filter { !FileManager.default.fileExists(atPath: $0) }
+            let gone = Set(items.map(\.path)).subtracting(failed)
             if var r = result {
                 for key in Array(r.items.keys) { r.items[key]?.removeAll { gone.contains($0.path) } }
                 result = r
@@ -169,6 +172,137 @@ final class AppModel: ObservableObject {
         disk = DiskInfo.read()
         if settings.monitorEnabled, let disk, monitor.check(disk, percent: settings.thresholdPercent) { Notifier.lowDisk(disk) }
         onMonitorChange?()
+    }
+}
+
+// MARK: Applications
+
+extension AppModel {
+    /// Les noms s'affichent aussitôt ; les tailles arrivent au fil de l'eau (8 calculs en parallèle), puis la liste se trie par taille.
+    func loadApps() {
+        guard !loadingApps, apps.isEmpty else { return }
+        loadingApps = true
+        let dirs = [URL(fileURLWithPath: "/Applications"), home.appendingPathComponent("Applications")]
+        Task {
+            let list = await Task.detached(priority: .userInitiated) { Uninstaller.listApps(dirs: dirs) }.value
+            apps = list
+            await withTaskGroup(of: (String, Int64).self) { group in
+                var next = list.makeIterator()
+                func launch() {
+                    guard let app = next.next() else { return }
+                    group.addTask(priority: .utility) { (app.path, DiskSize.bytes(of: URL(fileURLWithPath: app.path))) }
+                }
+                for _ in 0..<8 { launch() }
+                while let (path, size) = await group.next() {
+                    if let i = apps.firstIndex(where: { $0.path == path }) { apps[i].size = size }
+                    launch()
+                }
+            }
+            sizesReady = true
+            loadingApps = false
+        }
+    }
+
+    func isRunning(_ app: AppEntry) -> Bool {
+        !app.bundleID.isEmpty && !NSRunningApplication.runningApplications(withBundleIdentifier: app.bundleID).isEmpty
+    }
+
+    func select(_ app: AppEntry) {
+        selectedApp = app
+        related = []
+        relatedSelection = []
+        let home = home
+        let running = isRunning(app)
+        Task {
+            let found = await Task.detached(priority: .userInitiated) { Uninstaller.items(for: app, home: home, running: running) }.value
+            guard selectedApp?.path == app.path else { return }
+            related = found
+            relatedSelection = Set(found.map(\.path))
+        }
+    }
+
+    var selectedRelated: [JunkItem] { related.filter { relatedSelection.contains($0.path) } }
+
+    func uninstall() {
+        guard !busy, let app = selectedApp else { return }
+        let items = selectedRelated
+        guard !items.isEmpty else { return }
+        phase = .cleaning(0)
+        report = nil
+        let home = home
+        Task {
+            let done = await Task.detached(priority: .userInitiated) {
+                Cleaner.clean(items, home: home, runAdmin: AdminRunner.run)
+            }.value
+            phase = .idle
+            report = done
+            if !FileManager.default.fileExists(atPath: app.path) {
+                apps.removeAll { $0.path == app.path }
+                selectedApp = nil
+                related = []
+            } else {
+                select(app)
+            }
+            refreshDisk()
+        }
+    }
+}
+
+extension ScanContext {
+    /// Contexte réel : applis ouvertes et installées, instantanés Time Machine, langues du système.
+    @MainActor static func runningNames() -> Set<String> {
+        let apps = NSWorkspace.shared.runningApplications
+        return Set(apps.compactMap { $0.bundleIdentifier?.lowercased() } + apps.compactMap { $0.localizedName?.lowercased() })
+    }
+
+    static func live(home: URL, settings: AppSettings, running: Set<String>) -> ScanContext {
+        var c = ScanContext(home: home)
+        c.largeFileMinimum = Int64(settings.largeFileMinimumMB) * 1_000_000
+        c.excluded = Set(settings.excludedPaths)
+        c.running = running
+        c.installed = InstalledApps.bundleIDs()
+        c.isRegistered = { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil }
+        c.keptLanguages = Languages.kept(preferred: Locale.preferredLanguages)
+        c.snapshots = { TimeMachine.localSnapshots() }
+        if let location = UserDefaults(suiteName: "com.apple.screencapture")?.string(forKey: "location") {
+            c.screenshotFolder = URL(fileURLWithPath: (location as NSString).expandingTildeInPath)
+        }
+        return c
+    }
+}
+
+enum TimeMachine {
+    static func localSnapshots() -> [String] {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/tmutil")
+        process.arguments = ["listlocalsnapshots", "/"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        guard (try? process.run()) != nil else { return [] }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        return AdminScript.parseSnapshots(String(decoding: data, as: UTF8.self))
+    }
+}
+
+/// Exécute un script avec le mot de passe administrateur (boîte de dialogue du système) ; faux si la demande est refusée.
+enum AdminRunner {
+    static func run(_ script: String) -> Bool {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("hdcleaner-\(UUID().uuidString).sh")
+        do { try script.write(to: file, atomically: true, encoding: .utf8) } catch { return false }
+        defer { try? FileManager.default.removeItem(at: file) }
+        func escaped(_ text: String) -> String { text.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") }
+        let command = "/bin/sh '\(file.path)'"
+        let apple = "do shell script \"\(escaped(command))\" with administrator privileges with prompt \"\(escaped(L("admin.prompt")))\""
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        process.arguments = ["-e", apple]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        guard (try? process.run()) != nil else { return false }
+        process.waitUntilExit()
+        return process.terminationStatus == 0
     }
 }
 

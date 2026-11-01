@@ -69,7 +69,8 @@ final class LocalizationTests: XCTestCase {
     func testEveryCategoryIsTranslated() throws {
         let fr = try table("fr")
         for name in ["appCaches", "appLogs", "browserData", "devCaches", "trash", "downloads", "mailDownloads", "largeFiles",
-                     "leftovers", "iosBackups", "iosPhotoCache", "musicCache", "iosUpdates", "installers", "screenshots"] {
+                     "leftovers", "iosBackups", "iosPhotoCache", "musicCache", "iosUpdates", "installers", "screenshots",
+                     "systemCaches", "systemLogs", "snapshots", "languages"] {
             XCTAssertNotNil(fr["category.\(name)"], name)
             XCTAssertNotNil(fr["categoryHelp.\(name)"], name)
         }

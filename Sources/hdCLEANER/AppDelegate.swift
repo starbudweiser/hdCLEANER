@@ -49,7 +49,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func showWindow() {
-        NSApp.setActivationPolicy(.regular)
+        #if HDCLEANER_SELFTEST
+        let quiet = ProcessInfo.processInfo.environment["HDCLEANER_QUIET"] != nil // essai : fenêtre derrière les autres, sans prendre le focus
+        #else
+        let quiet = false
+        #endif
+        NSApp.setActivationPolicy(quiet ? .accessory : .regular)
         if window == nil {
             let hosting = NSHostingController(rootView: MainView().environmentObject(model))
             let w = NSWindow(contentViewController: hosting)
@@ -62,7 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             w.socleCenter()
             window = w
         }
-        window?.present()
+        if quiet { window?.orderBack(nil) } else { window?.present() }
     }
 
     private func makeMenu() -> NSMenu {

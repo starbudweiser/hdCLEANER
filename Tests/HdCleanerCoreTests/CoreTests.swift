@@ -27,6 +27,7 @@ final class CoreTests: XCTestCase {
 
     private func context() -> ScanContext {
         var c = ScanContext(home: home)
+        c.systemRoot = home // jamais le vrai système dans un essai
         c.largeFileMinimum = 100_000
         return c
     }
@@ -166,6 +167,165 @@ final class CoreTests: XCTestCase {
 
     func testEveryCategoryHasADisposalAndOnlyRegenerableIsPreselected() {
         for c in JunkCategory.allCases where c.preselected { XCTAssertEqual(c.disposal, .delete, c.rawValue) }
+        for c in [JunkCategory.systemCaches, .systemLogs, .snapshots, .languages] { XCTAssertFalse(c.preselected, c.rawValue) }
         XCTAssertEqual(Set(Scanner.order), Set(JunkCategory.allCases))
+    }
+
+    // MARK: Système, instantanés, langues, désinstallation
+
+    private func app(_ name: String, id: String, in root: String = "Applications", langs: [String] = [], mas: Bool = false) throws {
+        let base = home.appendingPathComponent("\(root)/\(name).app/Contents")
+        try FileManager.default.createDirectory(at: base.appendingPathComponent("Resources"), withIntermediateDirectories: true)
+        try (["CFBundleIdentifier": id] as NSDictionary).write(to: base.appendingPathComponent("Info.plist"))
+        if mas { try FileManager.default.createDirectory(at: base.appendingPathComponent("_MASReceipt"), withIntermediateDirectories: true) }
+        for l in langs { try file("\(root)/\(name).app/Contents/Resources/\(l).lproj/Localizable.strings", kb: 40) }
+    }
+
+    func testSystemCachesAndLogsAreAdminAndSkipApple() throws {
+        for f in ["Library/Caches/com.vendor.tool/a", "Library/Caches/com.apple.bird/a", "Library/Logs/DiagnosticReports/crash.ips", "Library/Logs/Vendor/log.txt",
+                  "var/log/system.log", "var/log/system.log.0.gz", "var/log/old.5"] { try file("sys/" + f) }
+        var c = context()
+        c.systemRoot = home.appendingPathComponent("sys") // distinct de la Bibliothèque de l'utilisateur
+        let r = Scanner.scan(c)
+        XCTAssertEqual(paths(r, .systemCaches), ["sys/Library/Caches/com.vendor.tool"])
+        XCTAssertEqual(paths(r, .systemLogs), ["sys/Library/Logs/DiagnosticReports/crash.ips", "sys/Library/Logs/Vendor", "sys/var/log/old.5", "sys/var/log/system.log.0.gz"])
+        XCTAssertTrue((r.items[.systemCaches] ?? []).allSatisfy { $0.disposal == .admin && !$0.preselected })
+        XCTAssertTrue(r.items[.appCaches] == nil, "la Bibliothèque de l'utilisateur est vide")
+    }
+
+    func testLanguagesKeepWantedSkipAppleAndAppStore() throws {
+        try app("Tool", id: "com.vendor.tool", langs: ["en", "fr", "de", "ja", "Base", "zh-Hans", "English"])
+        try app("Safari", id: "com.apple.Safari", langs: ["en", "de"])
+        try app("Store", id: "com.vendor.store", langs: ["en", "de"], mas: true)
+        try app("Only", id: "com.vendor.only", langs: ["fr", "en"])
+        var c = context()
+        c.keptLanguages = Languages.kept(preferred: ["fr-FR"])
+        let r = Scanner.scan(c)
+        let items = r.items[.languages] ?? []
+        XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items[0].path, home.appendingPathComponent("Applications/Tool.app").path)
+        XCTAssertEqual(items[0].parts.map { ($0 as NSString).lastPathComponent }, ["de.lproj", "ja.lproj", "zh-Hans.lproj"])
+        XCTAssertEqual(items[0].size, 3 * 40 * 1024)
+    }
+
+    func testLanguageNames() {
+        let kept = Languages.kept(preferred: ["fr-FR", "es_ES"])
+        XCTAssertEqual(kept, ["en", "fr", "es"])
+        for keep in ["en.lproj", "fr_CA.lproj", "Base.lproj", "English.lproj", "French.lproj", "Localizable.lproj", "und.lproj", "es-419.lproj"] { XCTAssertFalse(Languages.isRemovable(keep, kept: kept), keep) }
+        for drop in ["de.lproj", "pt_BR.lproj", "German.lproj", "zh-Hant.lproj", "ja.lproj"] { XCTAssertTrue(Languages.isRemovable(drop, kept: kept), drop) }
+        XCTAssertFalse(Languages.isRemovable("de", kept: kept))
+    }
+
+    func testSnapshotsParsedAndScanned() throws {
+        let out = "Snapshots for disk /:\ncom.apple.TimeMachine.2026-11-01-120000.local\ncom.apple.TimeMachine.2026-10-31-090102.local\nrubbish.line\n"
+        XCTAssertEqual(AdminScript.parseSnapshots(out), ["2026-11-01-120000", "2026-10-31-090102"])
+        var c = context()
+        c.snapshots = { ["2026-11-01-120000", "../etc"] }
+        let items = Scanner.scan(c).items[.snapshots] ?? []
+        XCTAssertEqual(items.map(\.name), ["2026-11-01-120000"])
+        XCTAssertEqual(items[0].disposal, .snapshot)
+    }
+
+    func testContainersAndMacInstallers() throws {
+        try file("Library/Containers/com.gone.app/Data/x")
+        try file("Library/Group Containers/group.com.gone.app/x")
+        try file("Library/Group Containers/ABCDE12345.com.gone.app/x")
+        try file("Library/Group Containers/UBF8T346G9.Office/x")
+        try file("Applications/Install macOS Sequoia.app/Contents/x", kb: 300)
+        let r = Scanner.scan(context())
+        XCTAssertEqual(paths(r, .leftovers), ["Library/Containers/com.gone.app", "Library/Group Containers/ABCDE12345.com.gone.app", "Library/Group Containers/group.com.gone.app"])
+        XCTAssertEqual(paths(r, .installers), ["Applications/Install macOS Sequoia.app"])
+        XCTAssertEqual(r.items[.installers]?.first?.disposal, .admin)
+    }
+
+    func testAdminGuard() {
+        let h = URL(fileURLWithPath: "/Users/x"), root = URL(fileURLWithPath: "/")
+        for ok in ["/Library/Caches/com.vendor.tool", "/Library/Logs/Vendor", "/Library/Logs/DiagnosticReports/a.ips", "/var/log/system.log.0.gz",
+                   "/Applications/Install macOS Sequoia.app", "/Applications/Tool.app/Contents/Resources/de.lproj", "/Users/x/Applications/Tool.app/Contents/Resources/de.lproj"] {
+            XCTAssertTrue(PathGuard.isSafeAdmin(ok, home: h, root: root), ok)
+        }
+        for bad in ["/", "/Library", "/Library/Caches", "/Library/Caches/com.apple.bird", "/Library/Logs/DiagnosticReports", "/var/log/system.log", "/var/log/sub/x.gz",
+                    "/System/Library/Caches/x", "/Applications/Tool.app", "/Applications/Tool.app/Contents/Resources", "/Applications/Tool.app/Contents/MacOS/Tool",
+                    "/Applications/Tool.app/Contents/Resources/../MacOS", "/etc/hosts", "/Library/Caches/../Keychains/x", "/Users/x/Library/Caches/foo"] {
+            XCTAssertFalse(PathGuard.isSafeAdmin(bad, home: h, root: root), bad)
+        }
+        XCTAssertTrue(PathGuard.isSafeAppBundle("/Applications/Tool.app", home: h))
+        XCTAssertFalse(PathGuard.isSafeAppBundle("/Applications/Utilities/Tool.app", home: h))
+        XCTAssertFalse(PathGuard.isSafeAppBundle("/Applications", home: h))
+        XCTAssertFalse(PathGuard.isSafeAppBundle("/Applications/.app", home: h))
+    }
+
+    func testScriptQuotesAndValidatesSnapshots() {
+        let script = AdminScript.build(removing: ["/Library/Caches/it's mine"], snapshots: ["2026-11-01-120000", "x; rm -rf /"])
+        XCTAssertTrue(script.contains("/bin/rm -rf -- '/Library/Caches/it'\\''s mine'"))
+        XCTAssertTrue(script.contains("tmutil deletelocalsnapshots 2026-11-01-120000"))
+        XCTAssertFalse(script.contains("rm -rf /\n"))
+        XCTAssertFalse(script.contains("x; rm"))
+    }
+
+    func testCleanerRunsAdminOnceAndVerifies() throws {
+        let cache = try file("Library/Caches/com.vendor.tool/a").deletingLastPathComponent()
+        let item = JunkItem(path: cache.path, size: 500, category: .systemCaches, admin: true)
+        let snap = JunkItem(path: JunkItem.snapshotPrefix + "2026-11-01-120000", size: 0, category: .snapshots)
+        var scripts: [String] = []
+        let ok = Cleaner.clean([item, snap], home: home, systemRoot: home, runAdmin: { script in
+            scripts.append(script)
+            try? FileManager.default.removeItem(at: cache) // simule le script
+            return true
+        })
+        XCTAssertEqual(scripts.count, 1)
+        XCTAssertTrue(scripts[0].contains(cache.path) && scripts[0].contains("deletelocalsnapshots"))
+        XCTAssertEqual(ok.freed, 500)
+        XCTAssertEqual(ok.count, 2)
+        XCTAssertTrue(ok.failures.isEmpty)
+
+        let other = try file("Library/Caches/com.vendor.two/a").deletingLastPathComponent()
+        let refused = Cleaner.clean([JunkItem(path: other.path, size: 5, category: .systemCaches, admin: true)], home: home, systemRoot: home, runAdmin: { _ in false })
+        XCTAssertTrue(refused.adminCancelled)
+        XCTAssertEqual(refused.failures, [other.path])
+        XCTAssertEqual(refused.freed, 0)
+
+        let outside = Cleaner.clean([JunkItem(path: "/etc/hosts", size: 5, category: .systemCaches, admin: true)], home: home, systemRoot: home, runAdmin: { _ in XCTFail("jamais"); return true })
+        XCTAssertEqual(outside.failures, ["/etc/hosts"])
+    }
+
+    func testUninstallerFindsRelatedFilesAndTrashesThem() throws {
+        try app("Tool Pro", id: "com.vendor.toolpro", langs: ["en"])
+        try file("Library/Application Support/com.vendor.toolpro/db", kb: 10)
+        try file("Library/Application Support/Tool Pro/prefs", kb: 10)
+        try file("Library/Preferences/com.vendor.toolpro.plist", kb: 4)
+        try file("Library/Preferences/com.vendor.toolpro.helper.plist", kb: 4)
+        try file("Library/Containers/com.vendor.toolpro/Data/x", kb: 4)
+        try file("Library/Group Containers/group.com.vendor.toolpro/x", kb: 4)
+        try file("Library/Caches/com.other.app/x", kb: 4)
+        let entries = Uninstaller.listApps(dirs: [home.appendingPathComponent("Applications")])
+        XCTAssertEqual(entries.map(\.bundleID), ["com.vendor.toolpro"])
+        var entry = entries[0]
+        entry.size = DiskSize.bytes(of: URL(fileURLWithPath: entry.path))
+        let items = Uninstaller.items(for: entry, home: home, running: false)
+        let rel = items.map { String($0.path.dropFirst(home.path.count + 1)) }
+        XCTAssertEqual(rel.first, "Applications/Tool Pro.app")
+        XCTAssertEqual(Set(rel.dropFirst()), ["Library/Application Support/com.vendor.toolpro", "Library/Application Support/Tool Pro", "Library/Preferences/com.vendor.toolpro.plist",
+                                               "Library/Preferences/com.vendor.toolpro.helper.plist", "Library/Containers/com.vendor.toolpro", "Library/Group Containers/group.com.vendor.toolpro"])
+        var trashed: [String] = []
+        let report = Cleaner.clean(items, home: home, systemRoot: home, toTrash: { trashed.append($0.path) })
+        XCTAssertEqual(Set(trashed), Set(items.map(\.path)))
+        XCTAssertTrue(report.failures.isEmpty)
+    }
+
+    /// Le script produit est du vrai shell : un chemin avec apostrophe et espaces est supprimé, ses voisins restent.
+    func testScriptRunsInShell() throws {
+        let target = try file("it's a cache/data file")
+        let neighbour = try file("keep/me")
+        let script = home.appendingPathComponent("run.sh")
+        try AdminScript.build(removing: [target.deletingLastPathComponent().path], snapshots: []).write(to: script, atomically: true, encoding: .utf8)
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/sh")
+        p.arguments = [script.path]
+        try p.run()
+        p.waitUntilExit()
+        XCTAssertEqual(p.terminationStatus, 0)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: target.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: neighbour.path))
     }
 }

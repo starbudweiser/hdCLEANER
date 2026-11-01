@@ -13,6 +13,7 @@ enum SelfTest {
         case "library": library()
         case "e2e": endToEnd(URL(fileURLWithPath: path))
         case "trash": trash(URL(fileURLWithPath: path))
+        case "apps": apps(path)
         case "render": render(to: URL(fileURLWithPath: path))
         default: Swift.print("commande inconnue")
         }
@@ -40,14 +41,24 @@ enum SelfTest {
         try? FileManager.default.createDirectory(at: view, withIntermediateDirectories: true)
         try? FileManager.default.createSymbolicLink(at: view.appendingPathComponent("Library"), withDestinationURL: real.appendingPathComponent("Library"))
         defer { try? FileManager.default.removeItem(at: view) }
-        var c = ScanContext(home: view)
-        c.installed = InstalledApps.bundleIDs()
-        c.isRegistered = { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil }
+        let c = ScanContext.live(home: view, settings: AppSettings(), running: ScanContext.runningNames())
         let start = Date()
         let r = Scanner.scan(c)
         show(r)
         Swift.print("applis :", c.installed.count, "durée :", String(format: "%.1f s", Date().timeIntervalSince(start)))
         for item in (r.items[.leftovers] ?? []).prefix(12) { Swift.print(" reste :", item.name, SizeFormat.text(item.size)) }
+    }
+
+    /// Applis installées (lecture seule) et, pour celle dont le nom contient l'argument, ses fichiers liés.
+    private static func apps(_ query: String) {
+        _ = NSApplication.shared
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let list = Uninstaller.listApps(dirs: [URL(fileURLWithPath: "/Applications"), home.appendingPathComponent("Applications")])
+        Swift.print("applis :", list.count)
+        guard var app = list.first(where: { $0.name.localizedCaseInsensitiveContains(query) }) else { Swift.print("aucune appli « \(query) »"); return }
+        app.size = DiskSize.bytes(of: URL(fileURLWithPath: app.path))
+        Swift.print(app.name, app.bundleID, SizeFormat.text(app.size))
+        for item in Uninstaller.items(for: app, home: home, running: false) { Swift.print(" ", item.path.replacingOccurrences(of: home.path, with: "~"), SizeFormat.text(item.size)) }
     }
 
     /// Analyse et nettoyage complets sur un faux dossier personnel.

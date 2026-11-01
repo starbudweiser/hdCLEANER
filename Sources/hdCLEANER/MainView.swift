@@ -21,6 +21,10 @@ private extension JunkCategory {
         case .iosUpdates: 0x60A5FA
         case .installers: 0x8B5CF6
         case .screenshots: 0xFB923C
+        case .systemCaches: 0x22D3EE
+        case .systemLogs: 0xFDE047
+        case .snapshots: 0x94A3B8
+        case .languages: 0xF59E0B
         }
         return Color(red: Double(hex >> 16 & 255) / 255, green: Double(hex >> 8 & 255) / 255, blue: Double(hex & 255) / 255)
     }
@@ -36,7 +40,12 @@ struct MainView: View {
                 DevicePanel().frame(width: 200)
                 VStack(spacing: Socle.M.space3) {
                     DiskPanel()
-                    if model.result == nil {
+                    SocleSegmented(options: [Mode.clean, Mode.apps], selection: model.mode, label: { L($0 == .clean ? "mode.clean" : "mode.apps") },
+                                   onSelect: { model.mode = $0; if $0 == .apps { model.loadApps() } })
+                        .frame(width: 320).frame(maxWidth: .infinity, alignment: .leading)
+                    if model.mode == .apps {
+                        AppsView()
+                    } else if model.result == nil {
                         WelcomePanel()
                     } else {
                         HStack(spacing: Socle.M.space3) {
@@ -48,7 +57,13 @@ struct MainView: View {
                 }
             }
             .padding(Socle.M.space3)
-            if confirming { ConfirmDialog(shown: $confirming) }
+            if confirming {
+                if model.mode == .apps {
+                    ConfirmDialog(items: model.selectedRelated, title: L("confirm.uninstall", model.selectedApp?.name ?? ""), button: L("apps.uninstall"), shown: $confirming) { model.uninstall() }
+                } else {
+                    ConfirmDialog(items: model.selectedItems, title: L("confirm.title", model.selectedItems.count), button: L("clean.button"), shown: $confirming) { model.clean() }
+                }
+            }
         }
         .frame(minWidth: 980, minHeight: 600)
         .background(Socle.C.bg)
@@ -179,6 +194,8 @@ private struct CheckBox: View {
                 }
             }
             .frame(width: Socle.M.sizeChoice, height: Socle.M.sizeChoice)
+            .frame(width: 28, height: 28) // zone cliquable plus large que la case
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -223,21 +240,24 @@ private struct CategoryPanel: View {
     }
 
     private func row(_ c: JunkCategory) -> some View {
+        let items = model.result?.items[c] ?? []
         let total = model.result?.total(c) ?? 0
         let denied = model.result?.denied.contains(c) == true
         return HStack(spacing: Socle.M.space2) {
-            CheckBox(state: state(c)) { model.setSelected(state(c) == .off, category: c) }.disabled(total == 0)
-            Circle().fill(c.color).frame(width: 9, height: 9)
-            Text(c.title).socle(Socle.T.body).foregroundStyle(total > 0 ? Socle.C.text : Socle.C.textMuted).lineLimit(1)
-            if denied { Image(systemName: "lock").font(.system(size: 10)).foregroundStyle(Socle.C.warning) }
-            Spacer()
-            Text(total > 0 ? SizeFormat.text(total) : "–").socle(Socle.T.meta).monospacedDigit().foregroundStyle(Socle.C.textMuted)
+            CheckBox(state: state(c)) { model.setSelected(state(c) == .off, category: c) }.disabled(items.isEmpty)
+            HStack(spacing: Socle.M.space2) {
+                Circle().fill(c.color).frame(width: 9, height: 9)
+                Text(c.title).socle(Socle.T.body).foregroundStyle(items.isEmpty ? Socle.C.textMuted : Socle.C.text).lineLimit(1)
+                if denied { Image(systemName: "lock").font(.system(size: 10)).foregroundStyle(Socle.C.warning) }
+                Spacer()
+                Text(total > 0 ? SizeFormat.text(total) : items.isEmpty ? "–" : L("list.count", items.count)).socle(Socle.T.meta).monospacedDigit().foregroundStyle(Socle.C.textMuted)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture { model.category = c }
         }
         .padding(.horizontal, Socle.M.space3)
         .frame(height: 30)
         .background(model.category == c ? Socle.C.surfaceSelected : .clear)
-        .contentShape(Rectangle())
-        .onTapGesture { model.category = c }
     }
 }
 
@@ -246,10 +266,19 @@ private struct ItemsPanel: View {
 
     private var items: [JunkItem] { model.result?.items[model.category] ?? [] }
 
+    private static func tag(_ disposal: Disposal) -> String {
+        switch disposal {
+        case .delete: "list.deleteTag"
+        case .trash: "list.trashTag"
+        case .admin: "list.adminTag"
+        case .snapshot: "list.snapshotTag"
+        }
+    }
+
     var body: some View {
         Panel {
             VStack(alignment: .leading, spacing: 0) {
-                PanelHeader(title: model.category.title, trailing: L(model.category.disposal == .delete ? "list.deleteTag" : "list.trashTag"))
+                PanelHeader(title: model.category.title, trailing: L(Self.tag(model.category.disposal)))
                 Text(model.category.help).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, Socle.M.space3).padding(.vertical, Socle.M.space2)
@@ -285,18 +314,24 @@ private struct ItemsPanel: View {
         let chosen = model.selection.contains(item.path)
         return HStack(spacing: Socle.M.space2) {
             CheckBox(state: chosen ? .on : .off) { model.setSelected(!chosen, item: item) }
-            Image(nsImage: NSWorkspace.shared.icon(forFile: item.path)).resizable().frame(width: 16, height: 16)
+            if item.category == .snapshots {
+                Image(systemName: "clock.arrow.circlepath").font(.system(size: 12)).foregroundStyle(Socle.C.textMuted).frame(width: 16, height: 16)
+            } else {
+                Image(nsImage: NSWorkspace.shared.icon(forFile: item.path)).resizable().frame(width: 16, height: 16)
+            }
             Text(item.name).socle(Socle.T.body).foregroundStyle(Socle.C.text).lineLimit(1).truncationMode(.middle).help(item.path)
             if item.inUse {
                 Text(L("list.inUse")).socle(Socle.T.caption).foregroundStyle(Socle.C.warning)
                     .padding(.horizontal, Socle.M.space1).background(Socle.C.bgSunken, in: RoundedRectangle(cornerRadius: 2))
             }
             Spacer()
-            Text(SizeFormat.text(item.size)).socle(Socle.T.meta).monospacedDigit().foregroundStyle(Socle.C.textMuted)
-            Button { NSWorkspace.shared.activateFileViewerSelecting([item.url]) } label: {
-                Image(systemName: "magnifyingglass").font(.system(size: 11)).foregroundStyle(Socle.C.textMuted)
+            Text(item.size > 0 ? SizeFormat.text(item.size) : "–").socle(Socle.T.meta).monospacedDigit().foregroundStyle(Socle.C.textMuted)
+            if item.category != .snapshots {
+                Button { NSWorkspace.shared.activateFileViewerSelecting([item.url]) } label: {
+                    Image(systemName: "magnifyingglass").font(.system(size: 11)).foregroundStyle(Socle.C.textMuted)
+                }
+                .buttonStyle(.plain).help(L("list.reveal"))
             }
-            .buttonStyle(.plain).help(L("list.reveal"))
         }
         .padding(.horizontal, Socle.M.space3)
         .frame(height: 28)
@@ -313,21 +348,14 @@ private struct FooterPanel: View {
     @Binding var confirming: Bool
 
     private var gain: Int64 { model.selectedItems.reduce(0) { $0 + $1.size } }
+    private var uninstallGain: Int64 { model.selectedRelated.reduce(0) { $0 + $1.size } }
 
     var body: some View {
         Panel {
             HStack(spacing: Socle.M.space3) {
                 switch model.phase {
                 case .idle:
-                    Button(L(model.result == nil ? "scan.start" : "scan.again")) { model.scan() }
-                        .buttonStyle(SocleButtonStyle(.primary)).fixedSize()
-                    message
-                    Spacer()
-                    if model.result != nil {
-                        Text(L("clean.gain", SizeFormat.text(gain))).socle(Socle.T.label).foregroundStyle(Socle.C.text)
-                        Button(L("clean.button")) { confirming = true }
-                            .buttonStyle(SocleButtonStyle(.action)).fixedSize().disabled(model.selection.isEmpty)
-                    }
+                    if model.mode == .apps { appsControls } else { cleanControls }
                 case .scanning(let category, let part):
                     work(L("scan.running", category.title), part)
                 case .cleaning(let part):
@@ -339,11 +367,35 @@ private struct FooterPanel: View {
         }
     }
 
+    @ViewBuilder private var cleanControls: some View {
+        Button(L(model.result == nil ? "scan.start" : "scan.again")) { model.scan() }
+            .buttonStyle(SocleButtonStyle(.primary)).fixedSize()
+        message
+        Spacer()
+        if model.result != nil {
+            Text(L("clean.gain", SizeFormat.text(gain))).socle(Socle.T.label).foregroundStyle(Socle.C.text)
+            Button(L("clean.button")) { confirming = true }
+                .buttonStyle(SocleButtonStyle(.action)).fixedSize().disabled(model.selection.isEmpty)
+        }
+    }
+
+    @ViewBuilder private var appsControls: some View {
+        message
+        Spacer()
+        if let app = model.selectedApp {
+            if model.isRunning(app) { Text(L("apps.running")).socle(Socle.T.label).foregroundStyle(Socle.C.warning) }
+            Text(L("clean.gain", SizeFormat.text(uninstallGain))).socle(Socle.T.label).foregroundStyle(Socle.C.text)
+            Button(L("apps.uninstall")) { confirming = true }
+                .buttonStyle(SocleButtonStyle(.action)).fixedSize().disabled(model.selectedRelated.isEmpty || model.isRunning(app))
+        }
+    }
+
     @ViewBuilder private var message: some View {
         if let r = model.report {
             let parts = [r.freed > 0 ? L("report.freed", SizeFormat.text(r.freed)) : nil,
                          r.trashed > 0 ? L("report.trashed", SizeFormat.text(r.trashed)) : nil,
-                         r.failures.isEmpty ? nil : L("report.failed", r.failures.count)]
+                         r.adminCancelled ? L("report.adminCancelled") : nil,
+                         r.failures.isEmpty || r.adminCancelled ? nil : L("report.failed", r.failures.count)]
             Text(parts.compactMap { $0 }.joined(separator: " ")).socle(Socle.T.label).foregroundStyle(r.failures.isEmpty ? Socle.C.success : Socle.C.warning)
         }
     }
@@ -359,26 +411,34 @@ private struct FooterPanel: View {
     }
 }
 
-/// Dernier contrôle : dit ce qui sera effacé pour de bon et ce qui partira à la Corbeille.
+/// Dernier contrôle : dit ce qui sera effacé pour de bon, ce qui partira à la Corbeille et ce qui demandera le mot de passe.
 private struct ConfirmDialog: View {
     @EnvironmentObject private var model: AppModel
+    let items: [JunkItem]
+    let title: String
+    let button: String
     @Binding var shown: Bool
+    let onConfirm: () -> Void
 
     var body: some View {
-        let items = model.selectedItems
         let deleted = model.total(ofSelected: items, .delete)
         let trashed = model.total(ofSelected: items, .trash)
+        let admin = model.total(ofSelected: items, .admin)
+        let snapshots = items.filter { $0.disposal == .snapshot }.count
         ZStack {
             Socle.C.scrim.ignoresSafeArea().onTapGesture { shown = false }
             VStack(alignment: .leading, spacing: Socle.M.space3) {
-                Text(L("confirm.title", items.count)).socle(Socle.T.heading).foregroundStyle(Socle.C.textStrong)
-                if deleted > 0 { Text(L("confirm.delete", SizeFormat.text(deleted))).socle(Socle.T.body).foregroundStyle(Socle.C.text).fixedSize(horizontal: false, vertical: true) }
-                if trashed > 0 { Text(L("confirm.trash", SizeFormat.text(trashed))).socle(Socle.T.body).foregroundStyle(Socle.C.text).fixedSize(horizontal: false, vertical: true) }
-                if items.contains(where: \.inUse) { Text(L("confirm.inUse")).socle(Socle.T.body).foregroundStyle(Socle.C.warning).fixedSize(horizontal: false, vertical: true) }
+                Text(title).socle(Socle.T.heading).foregroundStyle(Socle.C.textStrong).fixedSize(horizontal: false, vertical: true)
+                if deleted > 0 { line(L("confirm.delete", SizeFormat.text(deleted))) }
+                if trashed > 0 { line(L("confirm.trash", SizeFormat.text(trashed))) }
+                if admin > 0 { line(L("confirm.admin", SizeFormat.text(admin))) }
+                if snapshots > 0 { line(L("confirm.snapshots", snapshots)) }
+                if items.contains(where: { $0.category == .languages }) { line(L("confirm.languages"), warning: true) }
+                if items.contains(where: \.inUse) { line(L("confirm.inUse"), warning: true) }
                 HStack(spacing: Socle.M.space2) {
                     Spacer()
                     Button(L("confirm.cancel")) { shown = false }.buttonStyle(SocleButtonStyle(.secondary)).fixedSize().keyboardShortcut(.cancelAction)
-                    Button(L("clean.button")) { shown = false; model.clean() }.buttonStyle(SocleButtonStyle(.action)).fixedSize()
+                    Button(button) { shown = false; onConfirm() }.buttonStyle(SocleButtonStyle(.action)).fixedSize()
                 }
             }
             .padding(Socle.M.space5)
@@ -386,5 +446,91 @@ private struct ConfirmDialog: View {
             .background(Socle.C.surface)
             .overlay(RoundedRectangle(cornerRadius: Socle.M.radius).stroke(Socle.C.border))
         }
+    }
+
+    private func line(_ text: String, warning: Bool = false) -> some View {
+        Text(text).socle(Socle.T.body).foregroundStyle(warning ? Socle.C.warning : Socle.C.text).fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// Onglet Applications : liste des applis, puis l'appli choisie avec les fichiers qu'elle a laissés.
+private struct AppsView: View {
+    @EnvironmentObject private var model: AppModel
+    @State private var query = ""
+
+    private var shown: [AppEntry] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        let list = q.isEmpty ? model.apps : model.apps.filter { $0.name.localizedCaseInsensitiveContains(q) || $0.bundleID.localizedCaseInsensitiveContains(q) }
+        return model.sizesReady ? list.sorted { $0.size > $1.size } : list
+    }
+
+    var body: some View {
+        HStack(spacing: Socle.M.space3) {
+            Panel {
+                VStack(spacing: 0) {
+                    TextField(L("apps.search"), text: $query).socleField().padding(Socle.M.space2)
+                    if model.apps.isEmpty {
+                        Text(L("apps.loading")).socle(Socle.T.body).foregroundStyle(Socle.C.textMuted).frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 0) { ForEach(shown) { row($0) } }
+                        }
+                    }
+                }
+            }
+            .frame(width: 330)
+            Panel {
+                VStack(alignment: .leading, spacing: 0) {
+                    if let app = model.selectedApp {
+                        PanelHeader(title: app.name, trailing: L("list.trashTag"))
+                        Text(L("apps.help")).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, Socle.M.space3).padding(.vertical, Socle.M.space2)
+                        ScrollView {
+                            LazyVStack(spacing: 0) { ForEach(model.related) { relatedRow($0) } }
+                        }
+                    } else {
+                        Text(L("apps.select")).socle(Socle.T.body).foregroundStyle(Socle.C.textMuted).frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }
+            }
+        }
+    }
+
+    private func row(_ app: AppEntry) -> some View {
+        HStack(spacing: Socle.M.space2) {
+            Image(nsImage: NSWorkspace.shared.icon(forFile: app.path)).resizable().frame(width: 18, height: 18)
+            Text(app.name).socle(Socle.T.body).foregroundStyle(Socle.C.text).lineLimit(1)
+            Spacer()
+            Text(app.size > 0 || model.sizesReady ? SizeFormat.text(app.size) : "…").socle(Socle.T.meta).monospacedDigit().foregroundStyle(Socle.C.textMuted)
+        }
+        .padding(.horizontal, Socle.M.space3)
+        .frame(height: 30)
+        .background(model.selectedApp?.path == app.path ? Socle.C.surfaceSelected : .clear)
+        .contentShape(Rectangle())
+        .onTapGesture { model.select(app) }
+    }
+
+    private func relatedRow(_ item: JunkItem) -> some View {
+        let chosen = model.relatedSelection.contains(item.path)
+        let isApp = item.path == model.selectedApp?.path
+        return HStack(spacing: Socle.M.space2) {
+            CheckBox(state: chosen ? .on : .off) {
+                if chosen { model.relatedSelection.remove(item.path) } else { model.relatedSelection.insert(item.path) }
+            }
+            Image(nsImage: NSWorkspace.shared.icon(forFile: item.path)).resizable().frame(width: 16, height: 16)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(item.name).socle(Socle.T.body).foregroundStyle(Socle.C.text).lineLimit(1).truncationMode(.middle)
+                if !isApp {
+                    Text(item.url.deletingLastPathComponent().path.replacingOccurrences(of: model.home.path, with: "~")).socle(Socle.T.caption)
+                        .foregroundStyle(Socle.C.textMuted).lineLimit(1).truncationMode(.head)
+                }
+            }
+            Spacer()
+            Text(SizeFormat.text(item.size)).socle(Socle.T.meta).monospacedDigit().foregroundStyle(Socle.C.textMuted)
+        }
+        .padding(.horizontal, Socle.M.space3)
+        .frame(height: 36)
+        .help(item.path)
     }
 }
