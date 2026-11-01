@@ -501,7 +501,7 @@ final class CoreTests: XCTestCase {
     }
 
     func testInvisibleScanAndClean() throws {
-        try file("vol/a/.DS_Store"); try file("vol/a/._photo.jpg"); try file("vol/a/photo.jpg"); try file("vol/__MACOSX/x/._y")
+        try file("vol/a/.DS_Store"); try file("vol/a/photo.jpg"); try ad("vol/a/._photo.jpg"); try ad("vol/__MACOSX/x/._y")
         try file("vol/.Spotlight-V100/Store-V2/db", kb: 30); try file("vol/b/.TemporaryItems/t"); try file("vol/.gitignore"); try file("vol/.git/config")
         let root = home.appendingPathComponent("vol")
         let scan = InvisibleScanner.scan(roots: [root])
@@ -522,6 +522,13 @@ final class CoreTests: XCTestCase {
         for kept in ["vol/a/photo.jpg", "vol/.gitignore", "vol/.git/config", "vol/.Spotlight-V100/Store-V2/db", "vol/b/.TemporaryItems/t"] {
             XCTAssertTrue(FileManager.default.fileExists(atPath: home.appendingPathComponent(kept).path), kept)
         }
+    }
+
+    /// Écrit un vrai fichier AppleDouble (les « ._ » sans l'en-tête sont désormais conservés).
+    private func ad(_ relative: String, customIcon: Bool = false) throws {
+        let url = home.appendingPathComponent(relative)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try appleDouble(customIcon: customIcon).write(to: url)
     }
 
     private func Cleaner_like(_ items: [InvisibleItem], _ root: URL) -> CleanReport { InvisibleCleaner.clean(items, roots: [root]) }
@@ -549,11 +556,12 @@ final class CoreTests: XCTestCase {
     }
 
     func testWatcherReportedPathsOnlyAutoCleanSafeKinds() throws {
-        let ds = try file("vol/sub/.DS_Store"), ad = try file("vol/._x"), trashes = try file("vol/.Trashes/501/x").deletingLastPathComponent().deletingLastPathComponent()
+        let ds = try file("vol/sub/.DS_Store"), trashes = try file("vol/.Trashes/501/x").deletingLastPathComponent().deletingLastPathComponent()
         let keep = try file("vol/sub/data.txt"), temp = try file("vol/sub/.TemporaryItems/t").deletingLastPathComponent()
         let root = home.appendingPathComponent("vol")
-        let removed = InvisibleCleaner.cleanReported(paths: [ds.path, ad.path, trashes.path, keep.path, temp.path, "/etc/hosts"], roots: [root])
-        XCTAssertEqual(Set(removed), [ds.path, ad.path])
+        try ad("vol/._x"); let adPath = home.appendingPathComponent("vol/._x").path
+        let removed = InvisibleCleaner.cleanReported(paths: [ds.path, adPath, trashes.path, keep.path, temp.path, "/etc/hosts"], roots: [root])
+        XCTAssertEqual(Set(removed), [ds.path, adPath])
         XCTAssertTrue(FileManager.default.fileExists(atPath: trashes.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: temp.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: keep.path))
@@ -579,17 +587,16 @@ final class CoreTests: XCTestCase {
 
     func testCustomIconsAreKeptByScanAndCleaner() throws {
         let root = home.appendingPathComponent("vol")
-        for (name, icon) in [("vol/._dossier", true), ("vol/._vide", false)] {
-            let url = home.appendingPathComponent(name)
-            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try appleDouble(customIcon: icon).write(to: url)
-        }
+        try ad("vol/._dossier", customIcon: true); try ad("vol/._vide")
         try file("vol/Icon\r"); try file("vol/._Icon\r"); try file("vol/.DS_Store")
+        try file("vol/._config") // un fichier à nous qui porte ce nom sans être un AppleDouble
+        try ad("vol/__MACOSX/z/._icone", customIcon: true) // un __MACOSX qui cache une icône
         try FileManager.default.createDirectory(at: root.appendingPathComponent("sub/.AppleDouble"), withIntermediateDirectories: true)
         try appleDouble(customIcon: true).write(to: root.appendingPathComponent("sub/.AppleDouble/x"))
         let scan = InvisibleScanner.scan(roots: [root])
         XCTAssertEqual((scan.items[.appleDouble] ?? []).map { ($0.path as NSString).lastPathComponent }, ["._vide"])
-        XCTAssertEqual(scan.keptCustomIcons, 3, "._dossier, ._Icon\\r et sub/.AppleDouble")
+        XCTAssertEqual(scan.keptCustomIcons, 5, "._dossier, ._Icon\r, ._config (pas un AppleDouble), __MACOSX avec icône et sub/.AppleDouble")
+        XCTAssertNil(scan.items[.macosxFolder])
         // Même si un élément « ._dossier » est présenté au nettoyeur, il est refusé.
         let forced = InvisibleItem(path: root.appendingPathComponent("._dossier").path, size: 1, kind: .appleDouble, isDirectory: false)
         XCTAssertFalse(InvisibleCleaner.isSafe(forced, roots: [root]))

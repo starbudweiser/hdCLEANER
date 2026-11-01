@@ -42,7 +42,7 @@ public enum AppleDouble {
     static let finderInfoEntry: UInt32 = 9
     static let hasCustomIconFlag: UInt16 = 0x0400
 
-    private static func be32(_ d: Data, _ i: Int) -> UInt32 { d[d.startIndex + i..<d.startIndex + i + 4].reduce(0) { $0 << 8 | UInt32($1) } }
+    static func be32(_ d: Data, _ i: Int) -> UInt32 { d[d.startIndex + i..<d.startIndex + i + 4].reduce(0) { $0 << 8 | UInt32($1) } }
 
     /// Les « Finder Info » portent le drapeau « a une icône personnalisée » (kHasCustomIcon).
     public static func hasCustomIcon(_ data: Data) -> Bool {
@@ -61,9 +61,21 @@ public enum AppleDouble {
     }
 
     public static func hasCustomIcon(atPath path: String) -> Bool {
-        guard let handle = FileHandle(forReadingAtPath: path) else { return false }
+        hasCustomIcon(header(atPath: path) ?? Data())
+    }
+
+    /// Les 4 premiers Ko ; nil si le fichier est illisible.
+    static func header(atPath path: String) -> Data? {
+        guard let handle = FileHandle(forReadingAtPath: path) else { return nil }
         defer { try? handle.close() }
-        return hasCustomIcon((try? handle.read(upToCount: 4096)) ?? Data())
+        return try? handle.read(upToCount: 4096) ?? Data()
+    }
+
+    /// Un « ._ » ne se supprime que s'il est vraiment un fichier AppleDouble lisible et sans icône personnalisée :
+    /// un fichier illisible, ou qui porte ce nom sans en être un (« ._config » écrit à la main), est conservé.
+    public static func isDeletableMetadata(atPath path: String) -> Bool {
+        guard let data = header(atPath: path), data.count >= 26, be32(data, 0) == magic else { return false }
+        return !hasCustomIcon(data)
     }
 }
 
@@ -73,12 +85,26 @@ extension InvisibleKind {
     public static func keepsCustomIcon(path: String, isDirectory: Bool) -> Bool {
         let name = (path as NSString).lastPathComponent
         if name == "._Icon\r" || name == "Icon\r" { return true }
-        if name.hasPrefix("._"), !isDirectory { return AppleDouble.hasCustomIcon(atPath: path) }
+        if name.hasPrefix("._"), !isDirectory { return !AppleDouble.isDeletableMetadata(atPath: path) }
+        if name == "__MACOSX", isDirectory { return containsCustomIcon(inFolder: path) }
         if name == ".AppleDouble", isDirectory {
             let children = (try? FileManager.default.contentsOfDirectory(atPath: path)) ?? []
             return children.contains { AppleDouble.hasCustomIcon(atPath: (path as NSString).appendingPathComponent($0)) }
         }
         return false
+    }
+}
+
+extension InvisibleKind {
+    /// Un « __MACOSX » qui cache un « ._ » d'icône personnalisée est conservé aussi.
+    static func containsCustomIcon(inFolder path: String) -> Bool {
+        var found = false
+        TreeWalker.walk(path) { entry in
+            let name = (entry.path as NSString).lastPathComponent
+            if !entry.isDirectory, !entry.isSymlink, name.hasPrefix("._"), AppleDouble.hasCustomIcon(atPath: entry.path) || name == "._Icon\r" { found = true; return .stop }
+            return .descend
+        }
+        return found
     }
 }
 
@@ -126,7 +152,7 @@ public enum InvisibleScanner {
                 guard entry.level > 0, !entry.isSymlink else { return .descend }
                 let atRoot = (entry.path as NSString).deletingLastPathComponent == rootPath
                 guard let kind = InvisibleKind.classify(name: (entry.path as NSString).lastPathComponent, isDirectory: entry.isDirectory, atRoot: atRoot) else { return .descend }
-                if kind == .appleDouble, InvisibleKind.keepsCustomIcon(path: entry.path, isDirectory: entry.isDirectory) {
+                if kind == .appleDouble || kind == .macosxFolder, InvisibleKind.keepsCustomIcon(path: entry.path, isDirectory: entry.isDirectory) {
                     result.keptCustomIcons += 1
                     return entry.isDirectory ? .skip : .descend
                 }
