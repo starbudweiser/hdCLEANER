@@ -1,0 +1,166 @@
+import AppKit
+import HdCleanerCore
+import OSLog
+import ServiceManagement
+import SwiftUI
+
+enum Brand {
+    static let nsColor = NSColor(srgbRed: 0xA7 / 255, green: 0x8B / 255, blue: 0xFA / 255, alpha: 1)
+    static let color = Color(nsColor)
+}
+
+enum Log {
+    static let app = Logger(subsystem: "com.stephan.hdcleaner", category: "app")
+}
+
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+    private let model = AppModel()
+    private var window: NSWindow?
+    private var status: MonitorStatus?
+    /// Lancé par l'agent de connexion : surveillance seule, sans fenêtre.
+    private let background = CommandLine.arguments.contains("--monitor")
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        Socle.brand("hdCLEANER", color: Brand.color)
+        Socle.apply(model.socleTheme)
+        NSApp.mainMenu = makeMenu()
+        status = MonitorStatus(model: model, open: { [weak self] in self?.showWindow() })
+        model.startMonitoring()
+        if background {
+            NSApp.setActivationPolicy(.accessory)
+        } else {
+            NSApp.setActivationPolicy(.regular)
+            showWindow()
+        }
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        !model.settings.monitorEnabled
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { showWindow() }
+        return true
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        if model.settings.monitorEnabled { NSApp.setActivationPolicy(.accessory) } // plus d'icône dans le Dock sans fenêtre
+    }
+
+    private func showWindow() {
+        NSApp.setActivationPolicy(.regular)
+        if window == nil {
+            let hosting = NSHostingController(rootView: MainView().environmentObject(model))
+            let w = NSWindow(contentViewController: hosting)
+            w.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+            w.title = "hdCLEANER"
+            w.setContentSize(NSSize(width: 1080, height: 680))
+            w.contentMinSize = NSSize(width: 980, height: 600)
+            w.isReleasedWhenClosed = false
+            w.delegate = self
+            w.socleCenter()
+            window = w
+        }
+        window?.present()
+    }
+
+    private func makeMenu() -> NSMenu {
+        let bar = NSMenu()
+        func submenu(_ title: String) -> NSMenu {
+            let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+            let menu = NSMenu(title: title)
+            item.submenu = menu
+            bar.addItem(item)
+            return menu
+        }
+        func add(_ menu: NSMenu, _ title: String, _ action: Selector, _ key: String = "", target: AnyObject? = nil) {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+            item.target = target
+            menu.addItem(item)
+        }
+        let app = submenu("hdCLEANER")
+        add(app, L("about.menu"), #selector(openAbout), target: self)
+        app.addItem(.separator())
+        add(app, L("menu.settings"), #selector(openSettings), ",", target: self)
+        app.addItem(.separator())
+        add(app, L("menu.hide"), #selector(NSApplication.hide(_:)), "h")
+        add(app, L("menu.quit"), #selector(NSApplication.terminate(_:)), "q")
+        let window = submenu(L("menu.window"))
+        add(window, L("menu.minimize"), #selector(NSWindow.performMiniaturize(_:)), "m")
+        add(window, L("menu.close"), #selector(NSWindow.performClose(_:)), "w")
+        NSApp.windowsMenu = window
+        return bar
+    }
+
+    @objc private func openAbout() { About.show() }
+    @objc private func openSettings() { SettingsWindow.show(model: model) }
+}
+
+/// Icône de barre de menus, visible seulement quand la surveillance est active.
+@MainActor
+final class MonitorStatus: NSObject {
+    private let model: AppModel
+    private let open: () -> Void
+    private var item: NSStatusItem?
+
+    init(model: AppModel, open: @escaping () -> Void) {
+        self.model = model
+        self.open = open
+        super.init()
+        model.onMonitorChange = { [weak self] in self?.render() }
+        render()
+    }
+
+    private func render() {
+        guard model.settings.monitorEnabled else {
+            if let item { NSStatusBar.system.removeStatusItem(item) }
+            item = nil
+            return
+        }
+        if item == nil {
+            let new = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+            let menu = NSMenu()
+            let entry = NSMenuItem(title: L("menu.open"), action: #selector(openWindow), keyEquivalent: "")
+            entry.target = self
+            menu.addItem(entry)
+            menu.addItem(.separator())
+            let about = NSMenuItem(title: L("about.menu"), action: #selector(openAbout), keyEquivalent: "")
+            about.target = self
+            menu.addItem(about)
+            menu.addItem(NSMenuItem(title: L("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: ""))
+            new.menu = menu
+            item = new
+        }
+        guard let button = item?.button, let disk = model.disk else { return }
+        let symbol = NSImage(systemSymbolName: "internaldrive", accessibilityDescription: nil)
+        symbol?.isTemplate = !model.belowThreshold
+        button.image = symbol
+        button.contentTintColor = model.belowThreshold ? .systemRed : nil
+        button.imagePosition = .imageLeading
+        button.title = SizeFormat.text(disk.available)
+        button.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)
+        button.toolTip = L("status.tooltip", SizeFormat.text(disk.available))
+    }
+
+    @objc private func openWindow() { open() }
+    @objc private func openAbout() { About.show() }
+}
+
+/// Surveillance dès l'ouverture de session : agent lancé avec `--monitor`, donc sans fenêtre.
+@MainActor
+enum LoginAgent {
+    private static let service = SMAppService.agent(plistName: "com.stephan.hdcleaner.monitor.plist")
+
+    static var enabled: Bool { service.status == .enabled }
+
+    static func set(_ on: Bool) -> Bool {
+        do {
+            if on { try service.register() } else { try service.unregister() }
+            return true
+        } catch {
+            Log.app.error("Agent de connexion : \(error.localizedDescription, privacy: .public)")
+            return false
+        }
+    }
+}
