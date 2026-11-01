@@ -103,8 +103,10 @@ struct MaintenanceView: View {
                 Text(task.help).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted).fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
+            // La tâche en cours passe en bleu Socle (primaire) ; les autres se grisent le temps qu'elle tourne.
             Button(model.running == task ? L("maintenance.running") : L("maintenance.run")) { model.run(task) }
-                .buttonStyle(SocleButtonStyle(.secondary, height: 28)).fixedSize().disabled(model.running != nil)
+                .buttonStyle(SocleButtonStyle(model.running == task ? .primary : .secondary, height: 28)).fixedSize()
+                .disabled(model.running != nil && model.running != task)
         }
         .padding(.horizontal, Socle.M.space3).padding(.vertical, Socle.M.space2)
     }
