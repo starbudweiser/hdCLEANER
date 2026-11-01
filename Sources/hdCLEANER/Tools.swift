@@ -64,6 +64,61 @@ final class PermissionsModel: ObservableObject {
 
     let user = NSUserName()
 
+    // Mode simple : réparer les accès d'un dossier ou d'un volume et de tout son contenu.
+    @Published var advanced = false
+    @Published private(set) var diagnosis: AccessDiagnosis?
+    @Published private(set) var diagnosing = false
+    @Published private(set) var diagnosingCount = 0
+    /// Des éléments ont résisté : ils n'appartiennent pas à l'utilisateur, seul le mot de passe administrateur permet de les réparer.
+    @Published private(set) var needsAdminRetry = false
+    @Published private(set) var repaired = false
+
+    var repairPlan: PermissionPlan { AccessRepair.plan(targets: targets, user: user, recursive: recursive) }
+
+    func diagnose() {
+        guard !diagnosing, !targets.isEmpty else { return }
+        diagnosing = true
+        diagnosingCount = 0
+        diagnosis = nil
+        let flag = CancelFlag()
+        cancel = flag
+        let targets = targets, recursive = recursive
+        Task {
+            let found = await Task.detached(priority: .userInitiated) {
+                AccessRepair.diagnose(targets: targets, recursive: recursive, cancel: flag) { n in Task { @MainActor in self.diagnosingCount = n } }
+            }.value
+            diagnosing = false
+            diagnosis = found.cancelled ? nil : found
+        }
+    }
+
+    func cancelDiagnosis() { cancel.cancel() }
+
+    /// `admin` : réessai avec le mot de passe, pour ce que l'utilisateur ne possède pas.
+    func repair(admin: Bool) {
+        guard !running else { return }
+        running = true
+        repaired = false
+        needsAdminRetry = false
+        log = ""
+        let plan = repairPlan, targets = targets, recursive = recursive
+        let job = ShellJob()
+        self.job = job
+        Task {
+            let result = await Task.detached(priority: .userInitiated) { () -> ShellResult in
+                admin ? AdminRunner.runCapturing(plan.script()) : job.run(plan.script()) { text in Task { @MainActor in self.log += text } }
+            }.value
+            if admin, !result.output.isEmpty { log += result.output + "\n" }
+            if result.cancelled, admin { log += L("maintenance.refused") + "\n" }
+            // Contrôle après coup : ce qui reste est montré tel quel, jamais présumé réparé.
+            let after = await Task.detached(priority: .userInitiated) { AccessRepair.diagnose(targets: targets, recursive: recursive) }.value
+            diagnosis = after
+            repaired = after.problems == 0
+            needsAdminRetry = !admin && after.problems > 0
+            running = false
+        }
+    }
+
     var plan: PermissionPlan {
         var p = PermissionPlan()
         p.targets = targets
@@ -83,10 +138,17 @@ final class PermissionsModel: ObservableObject {
 
     func add(_ paths: [String]) {
         for path in paths { let p = URL(fileURLWithPath: path).standardizedFileURL.path; if !targets.contains(p) { targets.append(p) } }
-        preview = nil
+        resetResults()
     }
 
-    func remove(_ path: String) { targets.removeAll { $0 == path }; preview = nil }
+    func remove(_ path: String) { targets.removeAll { $0 == path }; resetResults() }
+
+    private func resetResults() {
+        preview = nil
+        diagnosis = nil
+        repaired = false
+        needsAdminRetry = false
+    }
 
     func runPreview() {
         guard !previewing else { return }

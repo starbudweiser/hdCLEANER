@@ -119,7 +119,7 @@ struct PermissionsView: View {
     @ObservedObject var model: PermissionsModel
     @State private var confirming = false
 
-    private var issues: [PermissionPlan.Issue] { model.issues(home: app.home) }
+    private var issues: [PermissionPlan.Issue] { model.advanced ? model.issues(home: app.home) : model.repairPlan.issues(home: app.home).filter { $0 != .nothingToDo } }
     /// « Rien à faire » ne s'affiche pas tant qu'aucune cible n'est choisie : une seule consigne à la fois.
     private var visibleIssues: [PermissionPlan.Issue] { issues.contains(.noTarget) ? [.noTarget] : issues }
 
@@ -128,9 +128,9 @@ struct PermissionsView: View {
             VStack(spacing: Socle.M.space3) {
                 HStack(spacing: Socle.M.space3) {
                     targets.frame(width: 300)
-                    options
+                    if model.advanced { options } else { simplePanel }
                 }
-                bottom
+                if model.advanced { bottom } else { simpleBottom }
             }
             if confirming { confirm }
         }
@@ -171,8 +171,10 @@ struct PermissionsView: View {
                         .menuStyle(.borderlessButton).fixedSize()
                     }
                     Toggle(L("perm.recursive"), isOn: $model.recursive).socle(Socle.T.body).toggleStyle(.switch)
-                    Text(L("perm.scope")).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted)
-                    SocleSegmented(options: PermissionPlan.Scope.allCases, selection: model.scope, label: { L("scope.\($0.rawValue)") }, onSelect: { model.scope = $0 })
+                    if model.advanced {
+                        Text(L("perm.scope")).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted)
+                        SocleSegmented(options: PermissionPlan.Scope.allCases, selection: model.scope, label: { L("scope.\($0.rawValue)") }, onSelect: { model.scope = $0 })
+                    }
                 }
                 .padding(Socle.M.space3)
             }
@@ -204,10 +206,119 @@ struct PermissionsView: View {
         }
     }
 
+    private var modeSwitch: some View {
+        SocleSegmented(options: [false, true], selection: model.advanced, label: { L($0 ? "perm.mode.advanced" : "perm.mode.simple") }, onSelect: { model.advanced = $0 })
+    }
+
+    // Mode simple
+
+    private func bullet(_ key: String, symbol: String = "checkmark", tint: Color = Socle.C.success) -> some View {
+        HStack(alignment: .top, spacing: Socle.M.space2) {
+            Image(systemName: symbol).font(.system(size: 11, weight: .bold)).foregroundStyle(tint).frame(width: 14).padding(.top, 2)
+            Text(L(key)).socle(Socle.T.body).foregroundStyle(Socle.C.text).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func count(_ n: Int, _ key: String) -> some View {
+        HStack(spacing: Socle.M.space2) {
+            Text("\(n)").socle(Socle.T.stat).monospacedDigit().foregroundStyle(n > 0 ? Socle.C.warning : Socle.C.textMuted).frame(minWidth: 40, alignment: .trailing)
+            Text(L(key)).socle(Socle.T.body).foregroundStyle(Socle.C.text)
+        }
+    }
+
+    private var diagnosisCard: some View {
+        VStack(alignment: .leading, spacing: Socle.M.space2) {
+            if model.diagnosing {
+                Text(L("perm.diagnosing", model.diagnosingCount)).socle(Socle.T.body).foregroundStyle(Socle.C.textMuted)
+            } else if let d = model.diagnosis {
+                if d.problems == 0 {
+                    Text(L("perm.noProblem", d.examined)).socle(Socle.T.label).foregroundStyle(Socle.C.success)
+                } else {
+                    Text(L("perm.problems", d.problems, d.examined)).socle(Socle.T.labelStrong).foregroundStyle(Socle.C.warning)
+                    count(d.notOwned, "perm.notOwned")
+                    count(d.locked, "perm.locked")
+                    count(d.notUsable, "perm.notUsable")
+                    ForEach(d.sample.prefix(5), id: \.self) { path in
+                        Text(path.replacingOccurrences(of: app.home.path, with: "~")).socle(Socle.T.caption).foregroundStyle(Socle.C.textMuted).lineLimit(1).truncationMode(.middle)
+                    }
+                }
+            } else {
+                Text(L("perm.diagnoseHint")).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(Socle.M.space3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Socle.C.bgInset, in: RoundedRectangle(cornerRadius: Socle.M.radius))
+    }
+
+    private var simplePanel: some View {
+        Panel {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Socle.M.space3) {
+                    modeSwitch
+                    Text(L("perm.simpleTitle")).socle(Socle.T.heading).foregroundStyle(Socle.C.textStrong)
+                    Text(L("perm.simpleIntro")).socle(Socle.T.body).foregroundStyle(Socle.C.textMuted).fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: Socle.M.space1_5) {
+                        Text(L("perm.simpleDoes")).socle(Socle.T.labelStrong).foregroundStyle(Socle.C.textStrong)
+                        bullet("perm.simpleOwner")
+                        bullet("perm.simpleLocks")
+                        bullet("perm.simpleACL")
+                        bullet("perm.simpleRights")
+                        bullet("perm.simpleKeeps", symbol: "lock.shield", tint: Socle.C.accent)
+                    }
+                    diagnosisCard
+                }
+                .padding(Socle.M.space3)
+            }
+        }
+    }
+
+    private var simpleBottom: some View {
+        Panel {
+            VStack(alignment: .leading, spacing: Socle.M.space2) {
+                if !model.log.isEmpty, model.diagnosis?.problems ?? 0 > 0 {
+                    LogView(text: model.log).frame(height: 60).overlay(RoundedRectangle(cornerRadius: 2).stroke(Socle.C.border))
+                }
+                HStack(spacing: Socle.M.space3) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(Array(issues.enumerated()), id: \.offset) { _, issue in
+                            Text(issue.message).socle(Socle.T.meta).foregroundStyle(issue == .noTarget ? Socle.C.textMuted : Socle.C.danger).lineLimit(2)
+                        }
+                        if model.running {
+                            Text(L("perm.repairing")).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted)
+                        } else if model.repaired {
+                            Text(L("perm.repaired")).socle(Socle.T.label).foregroundStyle(Socle.C.success)
+                        } else if model.needsAdminRetry {
+                            Text(L("perm.needsAdmin")).socle(Socle.T.meta).foregroundStyle(Socle.C.warning).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    Spacer()
+                    if model.needsAdminRetry && !model.running {
+                        Button(L("perm.retryAdmin")) { model.repair(admin: true) }.buttonStyle(SocleButtonStyle(.primary)).fixedSize()
+                    }
+                    if model.diagnosing {
+                        Button(L("scan.cancel")) { model.cancelDiagnosis() }.buttonStyle(SocleButtonStyle(.secondary)).fixedSize()
+                    } else {
+                        Button(L("perm.diagnose")) { model.diagnose() }.buttonStyle(SocleButtonStyle(.secondary)).fixedSize().disabled(!issues.isEmpty || model.running)
+                    }
+                    if model.running {
+                        Button(L("scan.cancel")) { model.stop() }.buttonStyle(SocleButtonStyle(.secondary)).fixedSize()
+                    } else {
+                        Button(L("perm.repair")) { confirming = true }.buttonStyle(SocleButtonStyle(.action)).fixedSize().disabled(!issues.isEmpty || model.diagnosing)
+                    }
+                }
+            }
+            .padding(Socle.M.space3)
+        }
+    }
+
+    // Mode avancé
+
     private var options: some View {
         Panel {
             ScrollView {
                 VStack(alignment: .leading, spacing: Socle.M.space3) {
+                    modeSwitch
                     Group {
                         Text(L("perm.flags")).socle(Socle.T.labelStrong).foregroundStyle(Socle.C.textStrong)
                         flagRow(L("perm.flag.hidden"), \.hidden)
@@ -286,6 +397,12 @@ struct PermissionsView: View {
     }
 
     private var confirm: some View {
+        if !model.advanced {
+            var lines: [(String, Bool)] = [(L("perm.repairConfirmBody", model.targets.count), false)]
+            if let d = model.diagnosis, d.problems > 0 { lines.append((L("perm.problems", d.problems, d.examined), false)) }
+            lines.append((L("perm.simpleKeeps"), false))
+            return ToolConfirm(title: L("perm.repairConfirmTitle"), lines: lines, button: L("perm.repair"), onCancel: { confirming = false }, onConfirm: { confirming = false; model.repair(admin: false) })
+        }
         var lines: [(String, Bool)] = [(L("perm.confirmBody", model.targets.count, L("scope.\(model.scope.rawValue)")), false)]
         if let p = model.preview { lines.append((L("perm.confirmCount", p.total), false)) }
         if model.recursive { lines.append((L("perm.confirmRecursive"), true)) }
@@ -367,6 +484,10 @@ struct InvisiblesView: View {
                     }
                     .padding(.horizontal, Socle.M.space3).frame(height: 30)
                     .background(model.kind == kind ? Socle.C.surfaceSelected : .clear)
+                }
+                if let kept = model.scan?.keptCustomIcons, kept > 0 {
+                    Text(L("invisibles.keptIcons", kept)).socle(Socle.T.meta).foregroundStyle(Socle.C.accentText)
+                        .padding(.horizontal, Socle.M.space3).padding(.vertical, Socle.M.space1_5)
                 }
                 Spacer(minLength: 0)
             }

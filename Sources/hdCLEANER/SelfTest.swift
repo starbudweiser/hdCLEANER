@@ -15,6 +15,7 @@ enum SelfTest {
         case "trash": trash(URL(fileURLWithPath: path))
         case "apps": apps(path)
         case "watch": watch(URL(fileURLWithPath: path))
+        case "repair": repair(URL(fileURLWithPath: path))
         case "maint": maint(path)
         case "exclude": exclude(URL(fileURLWithPath: path))
         case "render": render(to: URL(fileURLWithPath: path))
@@ -75,6 +76,26 @@ enum SelfTest {
         scan()
         Swift.print("revient après analyse :", model.result?.all.contains { $0.path == item.path } ?? false)
         Swift.print("après relancement :", AppModel(home: home, defaults: defaults).settings.excludedPaths.contains(item.path))
+    }
+
+    /// Diagnostic puis réparation des accès d'un dossier d'essai, par le modèle de l'appli (sans mot de passe).
+    private static func repair(_ dir: URL) {
+        _ = NSApplication.shared
+        let model = PermissionsModel()
+        func settle() {
+            let end = Date().addingTimeInterval(60)
+            RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+            while (model.diagnosing || model.running) && Date() < end { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+            RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        }
+        func show(_ d: AccessDiagnosis?) { Swift.print(d.map { "examinés \($0.examined) · autre propriétaire \($0.notOwned) · verrouillés \($0.locked) · inutilisables \($0.notUsable) · à réparer \($0.problems)" } ?? "aucun diagnostic") }
+        model.add([dir.path])
+        model.diagnose(); settle()
+        Swift.print("avant :", terminator: " "); show(model.diagnosis)
+        Swift.print("plan :", model.repairPlan.issues(home: FileManager.default.homeDirectoryForCurrentUser))
+        model.repair(admin: false); settle()
+        Swift.print("après :", terminator: " "); show(model.diagnosis)
+        Swift.print("réparé :", model.repaired, "| mot de passe requis :", model.needsAdminRetry)
     }
 
     /// Surveillance FSEvents sur un dossier d'essai : un .DS_Store, un ._ et un __MACOSX créés après le départ disparaissent, le reste reste.
@@ -178,6 +199,13 @@ enum SelfTest {
         model.permissions.flags.hidden = .off
         model.permissions.flags.locked = .off
         model.permissions.clearQuarantine = true
+        model.permissions.advanced = true
+        save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("permissions-advanced.png"))
+        model.permissions.advanced = false
+        model.permissions.diagnose()
+        let waitEnd = Date().addingTimeInterval(30)
+        while model.permissions.diagnosing && Date() < waitEnd { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
         save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("permissions.png"))
         model.mode = .invisibles
         model.invisibles.root = home
