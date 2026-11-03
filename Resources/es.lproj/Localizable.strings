@@ -24,6 +24,7 @@
 "device.system" = "Sistema";
 "disk.used" = "Usado: %@";
 "disk.free" = "Disponible: %@";
+"disk.reclaim" = "Recuperar %@";
 "disk.junk" = "Recuperable: %@";
 "monitor.badge" = "Umbral vigilado: %@";
 "monitor.below" = "Bajo el umbral: %@";

@@ -39,7 +39,7 @@ struct MainView: View {
             HStack(spacing: Socle.M.space3) {
                 DevicePanel().frame(width: 200)
                 VStack(spacing: Socle.M.space3) {
-                    DiskPanel()
+                    DiskPanel(confirming: $confirming)
                     SocleSegmented(options: [Mode.clean, Mode.apps, Mode.maintenance, Mode.permissions, Mode.invisibles], selection: model.mode, label: { L("mode.\($0)") },
                                    onSelect: { model.mode = $0; if $0 == .apps { model.loadApps() } })
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -116,6 +116,7 @@ private struct DevicePanel: View {
 }
 
 private struct DiskPanel: View {
+    @Binding var confirming: Bool
     @EnvironmentObject private var model: AppModel
 
     private var segments: [(color: Color, bytes: Int64)] {
@@ -153,12 +154,23 @@ private struct DiskPanel: View {
                         Text(L("disk.used", SizeFormat.text(model.disk?.used ?? 0)))
                         Text(L("disk.free", SizeFormat.text(model.disk?.available ?? 0))).socleValue()
                         if let r = model.result { Text(L("disk.junk", SizeFormat.text(r.total))) }
+                        if model.result != nil, case .idle = model.phase { reclaimButton }
                     }
                     .socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted)
                 }
             }
             .padding(Socle.M.space3)
         }
+    }
+
+    /// Récupère ce qui est coché (par défaut les éléments sûrs) : même confirmation que le bouton « Nettoyer » du bas.
+    private var reclaimButton: some View {
+        let gain = model.selectedItems.reduce(0) { $0 + $1.size }
+        return Button(L("disk.reclaim", SizeFormat.text(gain))) {
+            model.mode = .clean
+            confirming = true
+        }
+        .buttonStyle(SocleButtonStyle(.action, height: 24)).fixedSize().disabled(model.selection.isEmpty)
     }
 
     private var monitorBadge: some View {
