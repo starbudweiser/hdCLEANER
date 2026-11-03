@@ -4,21 +4,25 @@ public struct DiskInfo: Equatable, Sendable {
     public var name: String
     public var total: Int64
     public var available: Int64
+    /// Part de `available` que macOS libère de lui-même au besoin (instantanés locaux, caches) : déjà comptée comme disponible.
+    public var purgeable: Int64
 
-    public init(name: String, total: Int64, available: Int64) {
+    public init(name: String, total: Int64, available: Int64, purgeable: Int64 = 0) {
         self.name = name
         self.total = total
         self.available = available
+        self.purgeable = purgeable
     }
 
     public var used: Int64 { max(total - available, 0) }
 
     /// Espace disponible tel que l'affiche le Finder (espace purgeable compris).
     public static func read(_ url: URL = URL(fileURLWithPath: "/")) -> DiskInfo? {
-        let keys: Set<URLResourceKey> = [.volumeLocalizedNameKey, .volumeTotalCapacityKey, .volumeAvailableCapacityForImportantUsageKey]
+        let keys: Set<URLResourceKey> = [.volumeLocalizedNameKey, .volumeTotalCapacityKey, .volumeAvailableCapacityForImportantUsageKey, .volumeAvailableCapacityKey]
         guard let v = try? url.resourceValues(forKeys: keys), let total = v.volumeTotalCapacity,
               let available = v.volumeAvailableCapacityForImportantUsage else { return nil }
-        return DiskInfo(name: v.volumeLocalizedName ?? "", total: Int64(total), available: available)
+        let strict = v.volumeAvailableCapacity.map(Int64.init) ?? available
+        return DiskInfo(name: v.volumeLocalizedName ?? "", total: Int64(total), available: available, purgeable: max(available - strict, 0))
     }
 }
 

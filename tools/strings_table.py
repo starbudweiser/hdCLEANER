@@ -32,6 +32,8 @@ T = [
 ("disk.used", "Utilisé : %@", "Used: %@", "Usado: %@", "Usato: %@"),
 ("disk.free", "Disponible : %@", "Available: %@", "Disponible: %@", "Disponibile: %@"),
 ("disk.reclaim", "Récupérer %@", "Recover %@", "Recuperar %@", "Recupera %@"),
+("disk.purgeable", "Purgeable : %@", "Purgeable: %@", "Purgable: %@", "Eliminabile: %@"),
+("disk.free.button", "Libérer", "Free up", "Liberar", "Libera"),
 ("disk.junk", "Récupérable : %@", "Recoverable: %@", "Recuperable: %@", "Recuperabile: %@"),
 ("monitor.badge", "Seuil surveillé : %@", "Threshold monitor: %@", "Umbral vigilado: %@", "Soglia sorvegliata: %@"),
 ("monitor.below", "Sous le seuil : %@", "Below threshold: %@", "Bajo el umbral: %@", "Sotto la soglia: %@"),

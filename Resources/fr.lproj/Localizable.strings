@@ -25,6 +25,8 @@
 "disk.used" = "Utilisé : %@";
 "disk.free" = "Disponible : %@";
 "disk.reclaim" = "Récupérer %@";
+"disk.purgeable" = "Purgeable : %@";
+"disk.free.button" = "Libérer";
 "disk.junk" = "Récupérable : %@";
 "monitor.badge" = "Seuil surveillé : %@";
 "monitor.below" = "Sous le seuil : %@";

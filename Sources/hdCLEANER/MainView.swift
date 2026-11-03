@@ -153,14 +153,38 @@ private struct DiskPanel: View {
                     HStack(spacing: Socle.M.space4) {
                         Text(L("disk.used", SizeFormat.text(model.disk?.used ?? 0)))
                         Text(L("disk.free", SizeFormat.text(model.disk?.available ?? 0))).socleValue()
-                        if let r = model.result { Text(L("disk.junk", SizeFormat.text(r.total))) }
-                        if model.result != nil, case .idle = model.phase { reclaimButton }
                     }
-                    .socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted)
+                    .socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted).lineLimit(1)
+                    // Deuxième ligne : chaque mesure est suivie de son bouton ; elle passe à la ligne si la fenêtre est étroite.
+                    if model.result != nil || (model.disk?.purgeable ?? 0) > 0 {
+                        ViewThatFits(in: .horizontal) {
+                            actions(stacked: false)
+                            actions(stacked: true)
+                        }
+                    }
                 }
             }
             .padding(Socle.M.space3)
         }
+    }
+
+    private func actions(stacked: Bool) -> some View {
+        let layout = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: Socle.M.space2)) : AnyLayout(HStackLayout(spacing: Socle.M.space5))
+        return layout {
+            if model.result != nil {
+                HStack(spacing: Socle.M.space2) {
+                    Text(L("disk.junk", SizeFormat.text(model.result?.total ?? 0)))
+                    if case .idle = model.phase { reclaimButton }
+                }
+            }
+            if let purgeable = model.disk?.purgeable, purgeable > 0 {
+                HStack(spacing: Socle.M.space2) {
+                    Text(L("disk.purgeable", SizeFormat.text(purgeable)))
+                    if case .idle = model.phase, model.result != nil { freeButton }
+                }
+            }
+        }
+        .socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted).lineLimit(1).fixedSize(horizontal: true, vertical: false)
     }
 
     /// Récupère ce qui est coché (par défaut les éléments sûrs) : même confirmation que le bouton « Nettoyer » du bas.
@@ -171,6 +195,20 @@ private struct DiskPanel: View {
             confirming = true
         }
         .buttonStyle(SocleButtonStyle(.action, height: 24)).fixedSize().disabled(model.selection.isEmpty)
+    }
+
+    /// L'espace purgeable vient surtout des instantanés Time Machine locaux : on les propose seuls à la confirmation (mot de passe administrateur).
+    @ViewBuilder private var freeButton: some View {
+        let snapshots = model.result?.items[.snapshots] ?? []
+        if !snapshots.isEmpty {
+            Button(L("disk.free.button")) {
+                model.selection = Set(snapshots.map(\.path))
+                model.category = .snapshots
+                model.mode = .clean
+                confirming = true
+            }
+            .buttonStyle(SocleButtonStyle(.secondary, height: 24)).fixedSize()
+        }
     }
 
     private var monitorBadge: some View {
