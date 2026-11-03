@@ -19,6 +19,7 @@ enum SelfTest {
         case "maint": maint(path)
         case "exclude": exclude(URL(fileURLWithPath: path))
         case "render": render(to: URL(fileURLWithPath: path))
+        case "tools": tools(to: URL(fileURLWithPath: path), only: i + 3 < args.count ? args[i + 3] : "")
         default: Swift.print("commande inconnue")
         }
         return true
@@ -175,6 +176,54 @@ enum SelfTest {
         guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
         host.cacheDisplay(in: host.bounds, to: rep)
         try? rep.representation(using: .png, properties: [:])?.write(to: url)
+    }
+
+    /// Doublons, carte et rangement sur le faux dossier HDCLEANER_HOME : `--selftest tools <dossier> [dup|map|org]`.
+    private static func tools(to dir: URL, only: String) {
+        _ = NSApplication.shared
+        NSApp.setActivationPolicy(.prohibited)
+        Socle.apply(.dark)
+        Socle.brand("hdCLEANER", color: Brand.color)
+        let home = ProcessInfo.processInfo.environment["HDCLEANER_HOME"].map { URL(fileURLWithPath: $0) } ?? dir
+        let model = AppModel(home: home)
+        func pause(_ seconds: Double = 2, until busy: () -> Bool) {
+            let end = Date().addingTimeInterval(60 * seconds)
+            RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+            while busy() && Date() < end { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+            RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        }
+        let size = NSSize(width: 1080, height: 680)
+        if only.isEmpty || only == "dup" {
+            model.mode = .duplicates
+            save(MainView().environmentObject(model), size: size, to: dir.appendingPathComponent("dup-empty.png"))
+            Swift.print("dup vide OK")
+            model.duplicates.root = home
+            model.duplicates.minSize = 1_000
+            model.duplicates.startScan(home: home)
+            pause { model.duplicates.busy }
+            save(MainView().environmentObject(model), size: size, to: dir.appendingPathComponent("dup.png"))
+            Swift.print("dup OK", model.duplicates.scan?.groups.count ?? -1)
+        }
+        if only.isEmpty || only == "map" {
+            model.mode = .map
+            save(MainView().environmentObject(model), size: size, to: dir.appendingPathComponent("map-empty.png"))
+            Swift.print("map vide OK")
+            model.diskMap.root = home
+            model.diskMap.startScan()
+            pause { model.diskMap.busy }
+            save(MainView().environmentObject(model), size: size, to: dir.appendingPathComponent("map.png"))
+            Swift.print("map OK")
+        }
+        if only.isEmpty || only == "org" {
+            model.mode = .organize
+            save(MainView().environmentObject(model), size: size, to: dir.appendingPathComponent("org-empty.png"))
+            Swift.print("org vide OK")
+            model.organizer.root = home.appendingPathComponent("Downloads")
+            model.organizer.startPlan()
+            pause { model.organizer.busy }
+            save(MainView().environmentObject(model), size: size, to: dir.appendingPathComponent("org.png"))
+            Swift.print("org OK", model.organizer.plan?.moves.count ?? -1)
+        }
     }
 
     /// Fenêtre et réglages sur le faux dossier indiqué par HDCLEANER_HOME.

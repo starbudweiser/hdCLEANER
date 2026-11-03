@@ -15,6 +15,11 @@ public enum TreeWalker {
         public let mode: UInt16
         /// Flags BSD (`st_flags`) : UF_IMMUTABLE, UF_APPEND…
         public let flags: UInt32
+        /// Taille logique en octets (`st_size`), inode, volume et date de modification : doublons et carte du disque.
+        public let size: Int64
+        public let inode: UInt64
+        public let device: Int32
+        public let modified: Date
     }
 
     public enum Action { case descend, skip, stop }
@@ -32,7 +37,11 @@ public enum TreeWalker {
             let entry = Entry(path: String(cString: ent.pointee.fts_path), isDirectory: info == FTS_D, isSymlink: info == FTS_SL || info == FTS_SLNONE,
                               allocated: ent.pointee.fts_statp.map { Int64($0.pointee.st_blocks) * 512 } ?? 0, level: Int(ent.pointee.fts_level),
                               uid: ent.pointee.fts_statp.map { UInt32($0.pointee.st_uid) } ?? 0, mode: ent.pointee.fts_statp.map { UInt16($0.pointee.st_mode & 0o7777) } ?? 0,
-                              flags: ent.pointee.fts_statp.map { $0.pointee.st_flags } ?? 0)
+                              flags: ent.pointee.fts_statp.map { $0.pointee.st_flags } ?? 0,
+                              size: ent.pointee.fts_statp.map { Int64($0.pointee.st_size) } ?? 0,
+                              inode: ent.pointee.fts_statp.map { UInt64($0.pointee.st_ino) } ?? 0,
+                              device: ent.pointee.fts_statp.map { Int32($0.pointee.st_dev) } ?? 0,
+                              modified: ent.pointee.fts_statp.map { Date(timeIntervalSince1970: TimeInterval($0.pointee.st_mtimespec.tv_sec)) } ?? .distantPast)
             switch visit(entry) {
             case .descend: break
             case .skip: if entry.isDirectory { fts_set(fts, ent, FTS_SKIP) }

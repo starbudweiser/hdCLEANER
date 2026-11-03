@@ -4,7 +4,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// Fenêtre de confirmation commune aux outils : titre, lignes d'explication, un bouton d'action.
-private struct ToolConfirm: View {
+struct ToolConfirm: View {
     let title: String
     let lines: [(String, Bool)]
     let button: String
@@ -49,7 +49,7 @@ private struct LogView: View {
     }
 }
 
-private func chooseURLs(files: Bool, multiple: Bool, directory: URL?) -> [URL] {
+func chooseURLs(files: Bool, multiple: Bool, directory: URL?) -> [URL] {
     let panel = NSOpenPanel()
     panel.canChooseFiles = files
     panel.canChooseDirectories = true

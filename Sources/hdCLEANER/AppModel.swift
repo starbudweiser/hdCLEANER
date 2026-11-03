@@ -3,7 +3,7 @@ import Combine
 import HdCleanerCore
 import UserNotifications
 
-enum Mode: Hashable { case clean, apps, maintenance, permissions, invisibles }
+enum Mode: Hashable { case clean, apps, maintenance, permissions, invisibles, duplicates, map, organize }
 
 enum Phase: Equatable {
     case idle
@@ -36,6 +36,9 @@ final class AppModel: ObservableObject {
     let maintenance = MaintenanceModel()
     let permissions = PermissionsModel()
     let invisibles = InvisiblesModel()
+    let duplicates = DuplicatesModel()
+    let diskMap = DiskMapModel()
+    let organizer = OrganizerModel()
     private let watcher = InvisibleWatcher()
 
     let device = DeviceInfo.read()
