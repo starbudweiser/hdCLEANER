@@ -15,6 +15,8 @@ public struct AppSettings: Codable, Equatable {
     public var excludedPaths: [String] = []
     /// Dossiers et volumes où les fichiers invisibles de macOS sont supprimés dès qu'ils apparaissent.
     public var watchedFolders: [String] = []
+    /// Recherche quotidienne d'une nouvelle version sur GitHub (l'installation reste soumise à l'accord de l'utilisateur).
+    public var autoUpdate = true
 
     public init() {}
 
@@ -28,6 +30,7 @@ public struct AppSettings: Codable, Equatable {
         monitoredVolume = (try? c.decode(String.self, forKey: .monitoredVolume)) ?? d.monitoredVolume
         excludedPaths = (try? c.decode([String].self, forKey: .excludedPaths)) ?? d.excludedPaths
         watchedFolders = (try? c.decode([String].self, forKey: .watchedFolders)) ?? d.watchedFolders
+        autoUpdate = (try? c.decode(Bool.self, forKey: .autoUpdate)) ?? d.autoUpdate
     }
 
     /// Ramène les valeurs dans les plages de l'interface.

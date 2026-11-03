@@ -22,6 +22,10 @@ hdCLEANER is a personal take on AppYogi's *Disk Cleaner* — not affiliated with
 
 Some folders (Mail, Safari, Containers…) need *Full Disk Access*; the app says so on the category instead of showing an empty list.
 
+## Updates
+
+The app checks GitHub once a day for a new release and shows what changed before anything is installed. "Check for updates…" (app menu, menu bar icon, Settings > Updates) checks on demand; "Install" downloads the notarized package, verifies its SHA-256 and signature, replaces the app and relaunches it.
+
 ## Build from source
 
 ```bash

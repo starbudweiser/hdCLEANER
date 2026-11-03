@@ -56,6 +56,8 @@ final class AppModel: ObservableObject {
     }
 
     private let defaults: UserDefaults
+    let updater = UpdateEngine.shared  // mise à jour automatique commune (_tools/shared/Updater.swift)
+    private var bag = Set<AnyCancellable>()
 
     init(home: URL = AppModel.defaultHome, defaults: UserDefaults = .standard) {
         self.home = home
@@ -64,6 +66,10 @@ final class AppModel: ObservableObject {
         watcher.onRemoved = { [weak self] removed in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.invisibles.noteWatched(removed); self?.onMonitorChange?() } }
         }
+        updater.configure(repo: "hdCLEANER", lang: { Bundle.main.preferredLocalizations.first ?? "en" })
+        updater.autoCheck = { [weak self] in self?.settings.autoUpdate ?? true }
+        updater.canInstall = { [weak self] in self?.phase == .idle }
+        updater.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &bag)
     }
 
     var socleTheme: Socle.Theme {

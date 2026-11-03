@@ -28,6 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         status = MonitorStatus(model: model, open: { [weak self] in self?.showWindow() })
         model.startMonitoring()
         model.applyWatcher()
+        model.updater.start()
         DistributedNotificationCenter.default().addObserver(forName: SingleInstance.showWindow, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.showWindow() }
         }
@@ -110,6 +111,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         let app = submenu("hdCLEANER")
         add(app, L("about.menu"), #selector(openAbout), target: self)
+        add(app, L("menu.checkUpdates"), #selector(checkUpdates), target: self)
         app.addItem(.separator())
         add(app, L("menu.settings"), #selector(openSettings), ",", target: self)
         app.addItem(.separator())
@@ -123,6 +125,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc private func openAbout() { About.show() }
+    @objc private func checkUpdates() { model.updater.checkNow(); SettingsWindow.show(model: model, tab: .updates) }
     @objc private func openSettings() { SettingsWindow.show(model: model) }
 }
 
@@ -189,6 +192,9 @@ final class MonitorStatus: NSObject {
             let about = NSMenuItem(title: L("about.menu"), action: #selector(openAbout), keyEquivalent: "")
             about.target = self
             menu.addItem(about)
+            let upd = NSMenuItem(title: L("menu.checkUpdates"), action: #selector(checkUpdates), keyEquivalent: "")
+            upd.target = self
+            menu.addItem(upd)
             menu.addItem(NSMenuItem(title: L("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: ""))
             // Menu ouvert à la main, ancré sur le bouton : le menu attaché à l'item s'ouvrait parfois loin de l'icône (plusieurs écrans).
             self.menu = menu
@@ -241,6 +247,7 @@ final class MonitorStatus: NSObject {
 
     @objc private func openWindow() { open() }
     @objc private func openAbout() { About.show() }
+    @objc private func checkUpdates() { model.updater.checkNow() }
 }
 
 /// Surveillance dès l'ouverture de session : agent lancé avec `--monitor`, donc sans fenêtre.
