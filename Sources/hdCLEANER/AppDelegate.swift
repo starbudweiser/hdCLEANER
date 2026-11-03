@@ -156,6 +156,8 @@ final class MonitorStatus: NSObject {
     private let open: () -> Void
     private var item: NSStatusItem?
     private var header: NSMenuItem?
+    private var menu: NSMenu?
+    private var tip = ""
 
     init(model: AppModel, open: @escaping () -> Void) {
         self.model = model
@@ -169,6 +171,7 @@ final class MonitorStatus: NSObject {
         guard model.keepsRunningWithoutWindow else {
             if let item { NSStatusBar.system.removeStatusItem(item) }
             item = nil
+            menu = nil
             return
         }
         if item == nil {
@@ -187,7 +190,11 @@ final class MonitorStatus: NSObject {
             about.target = self
             menu.addItem(about)
             menu.addItem(NSMenuItem(title: L("menu.quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: ""))
-            new.menu = menu
+            // Menu ouvert à la main, ancré sur le bouton : le menu attaché à l'item s'ouvrait parfois loin de l'icône (plusieurs écrans).
+            self.menu = menu
+            new.button?.target = self
+            new.button?.action = #selector(showMenu(_:))
+            new.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
             item = new
         }
         guard let button = item?.button else { return }
@@ -202,21 +209,34 @@ final class MonitorStatus: NSObject {
             button.image?.isTemplate = true
             button.title = ""
             let text = L("watch.tooltip", model.settings.watchedFolders.count) + (model.invisibles.watchRemoved > 0 ? " · " + L("watch.removed", model.invisibles.watchRemoved) : "")
-            button.toolTip = text
+            setTip(button, text)
             header?.title = text
             return
         }
         guard let disk = model.monitoredDisk else { // volume démonté : on le dit au lieu d'afficher le disque de démarrage
             let name = URL(fileURLWithPath: model.settings.monitoredVolume).lastPathComponent
             button.title = "\(name) –"
-            button.toolTip = L("status.missing", name)
+            setTip(button, L("status.missing", name))
             header?.title = L("status.missing", name)
             return
         }
         let text = L("status.tooltip", disk.name, SizeFormat.text(disk.available))
         button.title = "\(disk.name)  \(SizeFormat.text(disk.available))"
-        button.toolTip = text
+        setTip(button, text)
         header?.title = text
+    }
+
+    /// Réaffecter une info-bulle identique la relance : elle restait affichée et suivait le pointeur.
+    private func setTip(_ button: NSStatusBarButton, _ text: String) {
+        tip = text
+        if button.toolTip != text { button.toolTip = text }
+    }
+
+    @objc private func showMenu(_ sender: NSStatusBarButton) {
+        guard let menu else { return }
+        sender.toolTip = nil // pas d'info-bulle par-dessus le menu
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.isFlipped ? sender.bounds.maxY + 4 : -4), in: sender)
+        sender.toolTip = tip
     }
 
     @objc private func openWindow() { open() }
