@@ -32,9 +32,12 @@ enum SettingsWindow {
                 window = w
             }
         }
-        window?.layoutIfNeeded()
-        window?.socleCenter()
-        window?.present()
+        guard let window else { return }
+        let wasVisible = window.isVisible
+        window.setContentSize(NSSize(width: 520, height: 460)) // taille fixe connue d'avance : le centrage ne dépend pas de la première mise en page
+        if !wasVisible { window.socleCenter() }
+        window.present()
+        if !wasVisible { DispatchQueue.main.async { window.socleCenter() } }
     }
 }
 

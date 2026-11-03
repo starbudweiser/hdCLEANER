@@ -189,6 +189,9 @@ final class MonitorStatus: NSObject {
             entry.target = self
             menu.addItem(entry)
             menu.addItem(.separator())
+            let prefs = NSMenuItem(title: L("menu.settings"), action: #selector(openSettings), keyEquivalent: "")
+            prefs.target = self
+            menu.addItem(prefs)
             let about = NSMenuItem(title: L("about.menu"), action: #selector(openAbout), keyEquivalent: "")
             about.target = self
             menu.addItem(about)
@@ -256,6 +259,7 @@ final class MonitorStatus: NSObject {
     @objc private func openWindow() { open() }
     @objc private func openAbout() { About.show() }
     @objc private func checkUpdates() { model.updater.checkNow() }
+    @objc private func openSettings() { SettingsWindow.show(model: model) }
 }
 
 /// Surveillance dès l'ouverture de session : agent lancé avec `--monitor`, donc sans fenêtre.
