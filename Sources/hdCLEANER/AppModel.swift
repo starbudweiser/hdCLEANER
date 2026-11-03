@@ -3,7 +3,7 @@ import Combine
 import HdCleanerCore
 import UserNotifications
 
-enum Mode: Hashable { case clean, apps, maintenance, permissions, invisibles, duplicates, map, organize }
+enum Mode: Hashable { case clean, apps, maintenance, permissions, invisibles, duplicates, map, organize, timeline }
 
 enum Phase: Equatable {
     case idle
@@ -38,6 +38,7 @@ final class AppModel: ObservableObject {
     let invisibles = InvisiblesModel()
     let duplicates = DuplicatesModel()
     let diskMap = DiskMapModel()
+    let timeline: TimelineModel
     let organizer = OrganizerModel()
     private let watcher = InvisibleWatcher()
 
@@ -62,10 +63,13 @@ final class AppModel: ObservableObject {
     init(home: URL = AppModel.defaultHome, defaults: UserDefaults = .standard) {
         self.home = home
         self.defaults = defaults
+        timeline = TimelineModel(home: home)
         settings = AppSettings.decode(defaults.data(forKey: Self.settingsKey))
         watcher.onRemoved = { [weak self] removed in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.invisibles.noteWatched(removed); self?.onMonitorChange?() } }
         }
+        timeline.onAnomaly = { anomaly, cause in Notifier.fastFilling(anomaly, cause: cause) }
+        timeline.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &bag)
         updater.configure(repo: "hdCLEANER", lang: { Bundle.main.preferredLocalizations.first ?? "en" })
         updater.autoCheck = { [weak self] in self?.settings.autoUpdate ?? true }
         updater.canInstall = { [weak self] in self?.phase == .idle }
@@ -429,6 +433,15 @@ enum Notifier {
 
     static func requestAuthorization() {
         center?.requestAuthorization(options: [.alert]) { _, _ in }
+    }
+
+    static func fastFilling(_ anomaly: Anomaly, cause: Growth?) {
+        let content = UNMutableNotificationContent()
+        content.title = L("notify.fast.title")
+        let lost = SizeFormat.text(anomaly.lost)
+        content.body = cause.map { L("notify.fast.body", lost, anomaly.days, URL(fileURLWithPath: $0.path).lastPathComponent) } ?? L("notify.fast.bodyNoCause", lost, anomaly.days)
+        requestAuthorization()
+        center?.add(UNNotificationRequest(identifier: "fast-filling", content: content, trigger: nil))
     }
 
     static func lowDisk(_ disk: DiskInfo) {

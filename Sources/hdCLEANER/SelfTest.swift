@@ -227,14 +227,34 @@ enum SelfTest {
     }
 
     /// Fenêtre et réglages sur le faux dossier indiqué par HDCLEANER_HOME.
+    /// Historique inventé (30 jours de remplissage, deux relevés de dossiers) pour l'écran Chronologie.
+    private static func seedTimeline(_ home: URL) {
+        let GB: Int64 = 1_000_000_000, now = Date()
+        var store = TimelineStore(url: TimelineStore.location(home: home))
+        for i in 0..<720 {
+            let t = now.addingTimeInterval(-Double(720 - i) * 3600)
+            let drift: Int64 = Int64(i) * GB / 12
+            let noise: Int64 = Int64(i % 7) * GB / 4
+            store.add(sample: SpaceSample(date: t, available: 300 * GB - drift + noise, total: 500 * GB))
+        }
+        let h = home.path
+        store.add(snapshot: SpaceSnapshot(date: now.addingTimeInterval(-30 * 86_400), sizes: [h: 100 * GB, h + "/Library": 40 * GB, h + "/Library/Containers": 10 * GB, h + "/Movies": 30 * GB]))
+        store.add(snapshot: SpaceSnapshot(date: now, sizes: [h: 160 * GB, h + "/Library": 80 * GB, h + "/Library/Containers": 48 * GB, h + "/Movies": 51 * GB]))
+        store.save()
+    }
+
     private static func render(to dir: URL) {
         _ = NSApplication.shared
         NSApp.setActivationPolicy(.prohibited) // jamais de fenêtre ni d'icône pendant l'essai
         Socle.apply(.dark)
         Socle.brand("hdCLEANER", color: Brand.color)
         let home = ProcessInfo.processInfo.environment["HDCLEANER_HOME"].map { URL(fileURLWithPath: $0) } ?? dir
+        seedTimeline(home)
         let model = AppModel(home: home)
         save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("welcome.png"))
+        model.mode = .timeline
+        save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("timeline.png"))
+        model.mode = .clean
         model.scan()
         wait(model)
         save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("main.png"))
