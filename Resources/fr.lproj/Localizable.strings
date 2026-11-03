@@ -258,6 +258,8 @@
 "status.missing" = "%@ : disque non monté";
 "settings.threshold" = "Prévenir sous %ld %% d'espace disponible (%@)";
 "settings.login" = "Surveiller dès l'ouverture de session";
+"settings.loginApp" = "Lancer à l'ouverture de session";
+"settings.loginHelp" = "hdCLEANER démarre en arrière-plan, avec son icône dans la barre de menus.";
 "settings.exclusionsHelp" = "Ces éléments, et tout ce qu'ils contiennent, ne sont plus proposés. Utilisez l'icône œil barré d'une ligne de la liste, le clic droit ou « Ajouter… ».";
 "settings.exclusionsEmpty" = "Aucune exclusion.";
 "settings.title" = "Réglages";

@@ -29,18 +29,23 @@ enum SettingsWindow {
                 w.styleMask = [.titled, .closable]
                 w.title = L("settings.title")
                 w.isReleasedWhenClosed = false
-                w.center()
                 window = w
             }
         }
+        window?.layoutIfNeeded()
+        window?.socleCenter()
         window?.present()
     }
 }
 
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
-    @State var tab = SettingsTab(rawValue: UserDefaults.standard.string(forKey: "settingsTab") ?? "") ?? .general
+    @State var tab: SettingsTab
     @State private var atLogin = LoginAgent.enabled
+
+    init(tab: SettingsTab? = nil) {
+        _tab = State(initialValue: tab ?? SettingsTab(rawValue: UserDefaults.standard.string(forKey: "settingsTab") ?? "") ?? .general)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Socle.M.space4) {
@@ -54,57 +59,97 @@ struct SettingsView: View {
             Spacer(minLength: 0)
         }
         .padding(Socle.M.space5)
-        .frame(width: 480, height: 380, alignment: .topLeading)
+        .frame(width: 520, height: 460, alignment: .topLeading)
         .background(Socle.C.bg)
         .toggleStyle(.switch)
         .onAppear { model.refreshDisk() } // liste des volumes à jour (disque externe branché depuis)
     }
 
+    /// Ligne de réglage : titre et aide à gauche, commande à droite (ou en dessous pour les curseurs).
+    private func row<C: View>(_ title: String, help: String? = nil, stacked: Bool = false, @ViewBuilder _ control: () -> C) -> some View {
+        let head = VStack(alignment: .leading, spacing: 2) {
+            Text(title).socle(Socle.T.label).foregroundStyle(Socle.C.textStrong)
+            if let help { Text(help).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted).fixedSize(horizontal: false, vertical: true) }
+        }
+        return Group {
+            if stacked {
+                VStack(alignment: .leading, spacing: Socle.M.space2) { head; control() }
+            } else {
+                HStack(alignment: .center, spacing: Socle.M.space4) { head; Spacer(minLength: Socle.M.space3); control() }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, Socle.M.space3)
+    }
+
+    /// Groupe de lignes dans une carte, séparées par un filet.
+    private func card<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        VStack(spacing: 0) { content() }
+            .padding(.horizontal, Socle.M.space4)
+            .background(Socle.C.surface)
+            .overlay(Rectangle().stroke(Socle.C.border, lineWidth: 1))
+    }
+
+    private var rule: some View { Rectangle().fill(Socle.C.borderSubtle).frame(height: 1) }
+
     private var general: some View {
-        VStack(alignment: .leading, spacing: Socle.M.space4) {
-            Text(L("settings.theme")).socle(Socle.T.label).foregroundStyle(Socle.C.textStrong)
-            SocleSegmented(options: ThemeChoice.allCases, selection: model.settings.theme, label: { L("theme.\($0.rawValue)") }, onSelect: { model.settings.theme = $0 })
-            Text(L("settings.largeFiles", SizeFormat.text(Int64(model.settings.largeFileMinimumMB) * 1_000_000))).socle(Socle.T.label).foregroundStyle(Socle.C.textStrong)
-            Slider(value: Binding(get: { Double(model.settings.largeFileMinimumMB) }, set: { model.settings.largeFileMinimumMB = Int($0) }), in: 100...10000, step: 100)
-                .tint(Socle.C.accent)
+        card {
+            row(L("settings.theme"), stacked: true) {
+                SocleSegmented(options: ThemeChoice.allCases, selection: model.settings.theme, label: { L("theme.\($0.rawValue)") }, onSelect: { model.settings.theme = $0 })
+            }
+            rule
+            row(L("settings.largeFiles", SizeFormat.text(Int64(model.settings.largeFileMinimumMB) * 1_000_000)), stacked: true) {
+                Slider(value: Binding(get: { Double(model.settings.largeFileMinimumMB) }, set: { model.settings.largeFileMinimumMB = Int($0) }), in: 100...10000, step: 100)
+                    .tint(Socle.C.accent)
+            }
+            rule
+            row(L("settings.loginApp"), help: L("settings.loginHelp")) {
+                Toggle("", isOn: Binding(get: { atLogin }, set: { on in
+                    if LoginAgent.set(on) { atLogin = on; model.onMonitorChange?() }
+                })).labelsHidden()
+            }
         }
     }
 
     private var monitor: some View {
-        VStack(alignment: .leading, spacing: Socle.M.space4) {
-            Toggle(L("settings.monitorOn"), isOn: $model.settings.monitorEnabled).socle(Socle.T.label)
-            Text(L("settings.monitorHelp")).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted).fixedSize(horizontal: false, vertical: true)
-            Text(L("settings.volume")).socle(Socle.T.label).foregroundStyle(Socle.C.textStrong)
-            Picker("", selection: $model.settings.monitoredVolume) {
-                ForEach(model.volumes) { Text("\($0.name)\($0.path == "/" ? L("settings.volumeStartup") : "")").tag($0.path) }
-                if !model.volumes.contains(where: { $0.path == model.settings.monitoredVolume }) {
-                    Text(URL(fileURLWithPath: model.settings.monitoredVolume).lastPathComponent + L("settings.volumeMissing")).tag(model.settings.monitoredVolume)
-                }
+        card {
+            row(L("settings.monitorOn"), help: L("settings.monitorHelp")) {
+                Toggle("", isOn: $model.settings.monitorEnabled).labelsHidden()
             }
-            .labelsHidden().pickerStyle(.menu).disabled(!model.settings.monitorEnabled)
+            rule
+            row(L("settings.volume")) {
+                Picker("", selection: $model.settings.monitoredVolume) {
+                    ForEach(model.volumes) { Text("\($0.name)\($0.path == "/" ? L("settings.volumeStartup") : "")").tag($0.path) }
+                    if !model.volumes.contains(where: { $0.path == model.settings.monitoredVolume }) {
+                        Text(URL(fileURLWithPath: model.settings.monitoredVolume).lastPathComponent + L("settings.volumeMissing")).tag(model.settings.monitoredVolume)
+                    }
+                }
+                .labelsHidden().pickerStyle(.menu).fixedSize()
+            }
+            .disabled(!model.settings.monitorEnabled)
+            rule
             let limit = ThresholdMonitor.limit(total: model.monitoredDisk?.total ?? 0, percent: model.settings.thresholdPercent)
-            Text(L("settings.threshold", model.settings.thresholdPercent, SizeFormat.text(limit))).socle(Socle.T.label).foregroundStyle(Socle.C.textStrong)
-            Slider(value: Binding(get: { Double(model.settings.thresholdPercent) }, set: { model.settings.thresholdPercent = Int($0) }), in: 5...50, step: 1)
-                .tint(Socle.C.accent).disabled(!model.settings.monitorEnabled)
-            Toggle(L("settings.login"), isOn: Binding(get: { atLogin }, set: { on in
-                if LoginAgent.set(on) { atLogin = on }
-            }))
-            .socle(Socle.T.label).disabled(!model.keepsRunningWithoutWindow)
+            row(L("settings.threshold", model.settings.thresholdPercent, SizeFormat.text(limit)), stacked: true) {
+                Slider(value: Binding(get: { Double(model.settings.thresholdPercent) }, set: { model.settings.thresholdPercent = Int($0) }), in: 5...50, step: 1)
+                    .tint(Socle.C.accent)
+            }
+            .disabled(!model.settings.monitorEnabled)
         }
     }
 
     private var updates: some View {
-        VStack(alignment: .leading, spacing: Socle.M.space3) {
-            Toggle(L("updates.auto"), isOn: $model.settings.autoUpdate).socle(Socle.T.label)
-            Text(L("updates.autoHelp")).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted).fixedSize(horizontal: false, vertical: true)
-            Text(L("updates.current", model.updater.currentVersion)).socle(Socle.T.monoSm).foregroundStyle(Socle.C.textMuted)
-            Text(updateStatus).socle(Socle.T.body).foregroundStyle(updateIsError ? Socle.C.danger : Socle.C.text)
-                .fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: Socle.M.space2) {
-                Button(L("updates.check")) { model.updater.checkNow() }
-                    .buttonStyle(SocleButtonStyle(.secondary)).disabled(model.updater.isBusy)
-                if case .available(let plan) = model.updater.state {
-                    Button(L("updates.install")) { model.updater.present(plan) }.buttonStyle(SocleButtonStyle(.primary))
+        card {
+            row(L("updates.auto"), help: L("updates.autoHelp")) {
+                Toggle("", isOn: $model.settings.autoUpdate).labelsHidden()
+            }
+            rule
+            row(L("updates.current", model.updater.currentVersion), help: updateStatus, stacked: true) {
+                HStack(spacing: Socle.M.space2) {
+                    Button(L("updates.check")) { model.updater.checkNow() }
+                        .buttonStyle(SocleButtonStyle(.secondary, height: 28)).fixedSize().disabled(model.updater.isBusy)
+                    if case .available(let plan) = model.updater.state {
+                        Button(L("updates.install")) { model.updater.present(plan) }.buttonStyle(SocleButtonStyle(.primary, height: 28)).fixedSize()
+                    }
                 }
             }
         }
@@ -138,25 +183,32 @@ struct SettingsView: View {
 
     private var exclusions: some View {
         VStack(alignment: .leading, spacing: Socle.M.space3) {
-            HStack(alignment: .top) {
+            HStack(alignment: .top, spacing: Socle.M.space4) {
                 Text(L("settings.exclusionsHelp")).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted).fixedSize(horizontal: false, vertical: true)
-                Spacer()
+                Spacer(minLength: 0)
                 Button(L("settings.add")) { addExclusions() }.buttonStyle(SocleButtonStyle(.secondary, height: 26)).fixedSize()
             }
             if model.settings.excludedPaths.isEmpty {
                 Text(L("settings.exclusionsEmpty")).socle(Socle.T.body).foregroundStyle(Socle.C.textMuted)
-            }
-            ScrollView {
-                VStack(spacing: Socle.M.space1) {
-                    ForEach(model.settings.excludedPaths, id: \.self) { path in
-                        HStack {
-                            Text(path).socle(Socle.T.monoSm).foregroundStyle(Socle.C.text).lineLimit(1).truncationMode(.middle)
-                            Spacer()
-                            Button(L("settings.remove")) { model.settings.excludedPaths.removeAll { $0 == path } }
-                                .buttonStyle(SocleButtonStyle(.secondary, height: 24)).fixedSize()
+                    .frame(maxWidth: .infinity, minHeight: 80)
+                    .background(Socle.C.surface).overlay(Rectangle().stroke(Socle.C.border, lineWidth: 1))
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(Array(model.settings.excludedPaths.enumerated()), id: \.element) { i, path in
+                            if i > 0 { rule }
+                            HStack(spacing: Socle.M.space3) {
+                                Text(path).socle(Socle.T.monoSm).foregroundStyle(Socle.C.text).lineLimit(1).truncationMode(.middle)
+                                Spacer(minLength: 0)
+                                Button(L("settings.remove")) { model.settings.excludedPaths.removeAll { $0 == path } }
+                                    .buttonStyle(SocleButtonStyle(.secondary, height: 24)).fixedSize()
+                            }
+                            .padding(.vertical, Socle.M.space2)
                         }
                     }
+                    .padding(.horizontal, Socle.M.space4)
                 }
+                .background(Socle.C.surface).overlay(Rectangle().stroke(Socle.C.border, lineWidth: 1))
             }
         }
     }

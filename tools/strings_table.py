@@ -271,6 +271,8 @@ T = [
 ("status.missing", "%@ : disque non monté", "%@: disk not mounted", "%@: disco no montado", "%@: disco non montato"),
 ("settings.threshold", "Prévenir sous %ld %% d'espace disponible (%@)", "Alert below %ld%% available space (%@)", "Avisar por debajo del %ld %% disponible (%@)", "Avvisa sotto il %ld%% di spazio disponibile (%@)"),
 ("settings.login", "Surveiller dès l'ouverture de session", "Monitor from login", "Vigilar desde el inicio de sesión", "Sorveglia dall'accesso"),
+("settings.loginApp", "Lancer à l'ouverture de session", "Launch at login", "Abrir al iniciar sesión", "Avvia all'accesso"),
+("settings.loginHelp", "hdCLEANER démarre en arrière-plan, avec son icône dans la barre de menus.", "hdCLEANER starts in the background, with its icon in the menu bar.", "hdCLEANER se inicia en segundo plano, con su icono en la barra de menús.", "hdCLEANER si avvia in background, con la sua icona nella barra dei menu."),
 ("settings.exclusionsHelp", "Ces éléments, et tout ce qu'ils contiennent, ne sont plus proposés. Utilisez l'icône œil barré d'une ligne de la liste, le clic droit ou « Ajouter… ».", "These items, and everything inside them, are no longer suggested. Use the crossed-out eye icon on a list row, right-click, or “Add…”.", "Estos elementos, y todo lo que contienen, ya no se proponen. Usa el icono del ojo tachado de una fila de la lista, el clic derecho o «Añadir…».", "Questi elementi, e tutto ciò che contengono, non vengono più proposti. Usa l'icona dell'occhio barrato di una riga dell'elenco, il clic destro o «Aggiungi…»."),
 ("settings.exclusionsEmpty", "Aucune exclusion.", "No exclusions.", "Sin exclusiones.", "Nessuna esclusione."),
 ("settings.title", "Réglages", "Settings", "Ajustes", "Impostazioni"),

@@ -210,6 +210,14 @@ final class MonitorStatus: NSObject {
         button.contentTintColor = model.belowThreshold ? .systemRed : nil
         button.imagePosition = .imageLeading
         button.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)
+        guard model.settings.monitorEnabled || model.watching else { // démarrage à l'ouverture de session seul : icône simple
+            button.image = NSImage(systemSymbolName: "internaldrive", accessibilityDescription: nil)
+            button.image?.isTemplate = true
+            button.title = ""
+            setTip(button, "hdCLEANER")
+            header?.title = "hdCLEANER"
+            return
+        }
         guard model.settings.monitorEnabled else { // surveillance des fichiers invisibles seule : une icône sans disque
             button.image = NSImage(systemSymbolName: "eye", accessibilityDescription: nil)
             button.image?.isTemplate = true

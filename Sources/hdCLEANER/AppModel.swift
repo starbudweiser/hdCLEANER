@@ -190,7 +190,7 @@ final class AppModel: ObservableObject {
     var watching: Bool { !settings.watchedFolders.isEmpty }
 
     /// Fermer la fenêtre ne quitte pas l'appli quand elle surveille le disque ou des dossiers.
-    var keepsRunningWithoutWindow: Bool { settings.monitorEnabled || watching }
+    var keepsRunningWithoutWindow: Bool { settings.monitorEnabled || watching || LoginAgent.enabled }
 
     // MARK: Seuil
 
