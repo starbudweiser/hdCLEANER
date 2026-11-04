@@ -63,12 +63,14 @@ public enum YaraEngine {
     }
 
     /// Analyse des fichiers ou dossiers (récursif). Une même menace trouvée par plusieurs règles est regroupée par chemin.
-    public static func scan(_ paths: [String], config: Config, recursive: Bool = true, cancel: CancelFlag = CancelFlag()) -> [Detection] {
+    public static func scan(_ paths: [String], config: Config, recursive: Bool = true, cancel: CancelFlag = CancelFlag(), progress: @Sendable (Double) -> Void = { _ in }) -> [Detection] {
         var all: [Detection] = []
         let rules = config.existingRules
         // yara accepte plusieurs fichiers de règles (un espace de noms chacun) mais une seule cible : un appel par chemin.
-        for target in paths where FileManager.default.fileExists(atPath: target) {
+        let targets = recursive ? units(of: paths) : paths.filter { FileManager.default.fileExists(atPath: $0) }
+        for (index, target) in targets.enumerated() {
             if cancel.isCancelled { break }
+            progress(Double(index) / Double(max(targets.count, 1)))
             var args = ["-w", "-m", "-N", "-z", "300"]
             if recursive { args.append(contentsOf: ["-r", "-p", "2"]) }
             args.append(contentsOf: rules.enumerated().map { "r\($0.offset):\($0.element.path)" })
@@ -78,6 +80,19 @@ public enum YaraEngine {
         }
         var seen = Set<String>()
         return all.filter { seen.insert($0.id).inserted }
+    }
+
+    /// Découpe les dossiers en leurs éléments directs (une appli, un fichier…) : chacun est une étape de la progression.
+    static func units(of paths: [String]) -> [String] {
+        let fm = FileManager.default
+        var out: [String] = []
+        for path in paths where fm.fileExists(atPath: path) {
+            var isDir: ObjCBool = false
+            _ = fm.fileExists(atPath: path, isDirectory: &isDir)
+            let children = isDir.boolValue ? ((try? fm.contentsOfDirectory(atPath: path)) ?? []) : []
+            if children.isEmpty { out.append(path) } else { out.append(contentsOf: children.sorted().map { path + ($0.isEmpty ? "" : "/" + $0) }) }
+        }
+        return out
     }
 
     private static func run(_ binary: URL, _ args: [String], cancel: CancelFlag) -> String? {

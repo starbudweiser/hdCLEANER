@@ -47,6 +47,7 @@ final class SecurityModel: ObservableObject {
     @Published private(set) var scanning = false
     @Published private(set) var scanned = false
     @Published private(set) var current = ""
+    @Published private(set) var progress = 0.0
     @Published private(set) var results: [Detection] = []
     @Published private(set) var quarantined: [QuarantinedItem] = []
     @Published private(set) var info = SignatureInfo()
@@ -102,11 +103,14 @@ final class SecurityModel: ObservableObject {
         scanned = false
         note = nil
         current = label
+        progress = 0
         results = []
         let flag = CancelFlag()
         cancel = flag
         Task {
-            let found = await Task.detached(priority: .utility) { YaraEngine.scan(paths, config: config, cancel: flag) }.value
+            let found = await Task.detached(priority: .utility) { YaraEngine.scan(paths, config: config, cancel: flag) { part in
+                    DispatchQueue.main.async { MainActor.assumeIsolated { self.progress = part } }
+                } }.value
             scanning = false
             guard !flag.isCancelled else { return }
             let already = Set(Quarantine.list(home: home).map(\.originalPath))
@@ -237,8 +241,10 @@ struct SecurityView: View {
                 Rectangle().fill(Socle.C.borderSubtle).frame(height: 1)
                 HStack(spacing: Socle.M.space3) {
                     if model.scanning {
-                        Text(L("sec.scanning", model.current)).socle(Socle.T.label).foregroundStyle(Socle.C.textMuted).lineLimit(1)
-                        Spacer()
+                        Text(L("sec.scanning", model.current)).socle(Socle.T.label).foregroundStyle(Socle.C.warningBorder).lineLimit(1)
+                        ProgressView(value: model.progress).tint(Socle.C.warningBorder)
+                        Text("\(Int((model.progress * 100).rounded())) %").socle(Socle.T.label).monospacedDigit().foregroundStyle(Socle.C.warningBorder)
+                            .frame(width: 44, alignment: .trailing)
                         Button(L("scan.cancel")) { model.cancelScan() }.buttonStyle(SocleButtonStyle(.secondary)).fixedSize()
                     } else {
                         Button(L("sec.quick")) { model.quickScan() }.buttonStyle(SocleButtonStyle(.primary)).fixedSize()
