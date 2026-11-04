@@ -17,6 +17,8 @@ public struct AppSettings: Codable, Equatable {
     public var watchedFolders: [String] = []
     /// Recherche quotidienne d'une nouvelle version sur GitHub (l'installation reste soumise à l'accord de l'utilisateur).
     public var autoUpdate = true
+    /// Surveillance des éléments de démarrage automatique (antivirus temps réel, sans calcul tant que rien ne change).
+    public var realtimeProtection = true
 
     public init() {}
 
@@ -31,6 +33,7 @@ public struct AppSettings: Codable, Equatable {
         excludedPaths = (try? c.decode([String].self, forKey: .excludedPaths)) ?? d.excludedPaths
         watchedFolders = (try? c.decode([String].self, forKey: .watchedFolders)) ?? d.watchedFolders
         autoUpdate = (try? c.decode(Bool.self, forKey: .autoUpdate)) ?? d.autoUpdate
+        realtimeProtection = (try? c.decode(Bool.self, forKey: .realtimeProtection)) ?? d.realtimeProtection
     }
 
     /// Ramène les valeurs dans les plages de l'interface.

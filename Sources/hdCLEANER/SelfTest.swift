@@ -19,10 +19,43 @@ enum SelfTest {
         case "maint": maint(path)
         case "exclude": exclude(URL(fileURLWithPath: path))
         case "render": render(to: URL(fileURLWithPath: path))
+        case "security": security(URL(fileURLWithPath: path))
+        case "securitywatch": securityWatch(URL(fileURLWithPath: path))
         case "tools": tools(to: URL(fileURLWithPath: path), only: i + 3 < args.count ? args[i + 3] : "")
         default: Swift.print("commande inconnue")
         }
         return true
+    }
+
+    /// Analyse d'un dossier avec le moteur embarqué (yara du paquet), isolement des menaces, restauration.
+    private static func security(_ dir: URL) {
+        let model = SecurityModel(home: AppModel.defaultHome)
+        guard let config = model.config else { Swift.print("moteur introuvable dans le paquet"); return }
+        let found = YaraEngine.scan([dir.path], config: config)
+        Swift.print("moteur OK, règles : \(config.ruleFiles.map(\.lastPathComponent)), menaces : \(found.count)")
+        for d in found { Swift.print("  \(d.rule)  \(d.path)") }
+        Swift.print("base : \(YaraEngine.signatureInfo())")
+    }
+
+    /// Temps réel : un élément de démarrage suspect déposé dans ~/Library/LaunchAgents d'un faux dossier personnel est isolé tout seul.
+    private static func securityWatch(_ home: URL) {
+        _ = NSApplication.shared
+        let fm = FileManager.default
+        let agents = home.appendingPathComponent("Library/LaunchAgents")
+        try? fm.createDirectory(at: agents, withIntermediateDirectories: true)
+        let model = MainActor.assumeIsolated { SecurityModel(home: home) }
+        nonisolated(unsafe) var notified: [String] = []
+        MainActor.assumeIsolated {
+            model.onThreat = { name, isolated in notified.append("\(name) isolé=\(isolated)") }
+            model.start(realtime: true)
+        }
+        RunLoop.main.run(until: Date().addingTimeInterval(1))
+        try? "<plist><dict><key>Label</key><string>x.evil</string><key>ProgramArguments</key><array><string>/private/tmp/payload</string></array></dict></plist>".write(to: agents.appendingPathComponent("evil.plist"), atomically: true, encoding: .utf8)
+        try? "<plist><dict><key>ProgramArguments</key><array><string>/Applications/Foo.app/Contents/MacOS/foo</string></array></dict></plist>".write(to: agents.appendingPathComponent("fine.plist"), atomically: true, encoding: .utf8)
+        RunLoop.main.run(until: Date().addingTimeInterval(8))
+        Swift.print("evil.plist", fm.fileExists(atPath: agents.appendingPathComponent("evil.plist").path) ? "reste" : "mis en quarantaine")
+        Swift.print("fine.plist", fm.fileExists(atPath: agents.appendingPathComponent("fine.plist").path) ? "reste (normal)" : "déplacé (anormal)")
+        Swift.print("notifications :", notified, "| quarantaine :", Quarantine.list(home: home).count)
     }
 
     private static func wait(_ model: AppModel) {
@@ -254,6 +287,8 @@ enum SelfTest {
         save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("welcome.png"))
         model.mode = .timeline
         save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("timeline.png"))
+        model.mode = .security
+        save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("security.png"))
         model.mode = .clean
         model.scan()
         wait(model)

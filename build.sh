@@ -26,6 +26,8 @@ cp "$BIN" "$APP/Contents/MacOS/hdCLEANER"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp -R Resources/*.lproj "$APP/Contents/Resources/" # textes fr, en, es, it
 cp assets/icon.icns "$APP/Contents/Resources/icon.icns"
+# Moteur d'analyse (YARA, licence BSD) et règles propres à hdCLEANER
+cp Resources/yara Resources/hd_rules.yar Resources/YARA-LICENSE.txt "$APP/Contents/Resources/"
 cp Resources/LaunchAgent.plist "$APP/Contents/Library/LaunchAgents/com.stephan.hdcleaner.monitor.plist"
 
 if [ -n "${SIGN_IDENTITY:-}" ]; then

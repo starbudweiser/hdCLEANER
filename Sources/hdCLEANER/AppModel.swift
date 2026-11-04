@@ -3,7 +3,7 @@ import Combine
 import HdCleanerCore
 import UserNotifications
 
-enum Mode: Hashable { case clean, apps, maintenance, permissions, invisibles, duplicates, map, organize, timeline }
+enum Mode: Hashable { case clean, apps, maintenance, permissions, invisibles, duplicates, map, organize, timeline, security }
 
 enum Phase: Equatable {
     case idle
@@ -39,6 +39,7 @@ final class AppModel: ObservableObject {
     let duplicates = DuplicatesModel()
     let diskMap = DiskMapModel()
     let timeline: TimelineModel
+    let security: SecurityModel
     let organizer = OrganizerModel()
     private let watcher = InvisibleWatcher()
 
@@ -64,11 +65,14 @@ final class AppModel: ObservableObject {
         self.home = home
         self.defaults = defaults
         timeline = TimelineModel(home: home)
+        security = SecurityModel(home: home)
         settings = AppSettings.decode(defaults.data(forKey: Self.settingsKey))
         watcher.onRemoved = { [weak self] removed in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.invisibles.noteWatched(removed); self?.onMonitorChange?() } }
         }
         timeline.onAnomaly = { anomaly, cause in Notifier.fastFilling(anomaly, cause: cause) }
+        security.onThreat = { name, isolated in Notifier.threat(name, isolated: isolated) }
+        security.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &bag)
         timeline.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &bag)
         updater.configure(repo: "hdCLEANER", lang: { Bundle.main.preferredLocalizations.first ?? "en" })
         updater.autoCheck = { [weak self] in self?.settings.autoUpdate ?? true }
@@ -99,6 +103,7 @@ final class AppModel: ObservableObject {
         defaults.set(try? JSONEncoder().encode(settings), forKey: Self.settingsKey)
         if settings.theme != old.theme { Socle.apply(socleTheme) }
         if settings.watchedFolders != old.watchedFolders { applyWatcher() }
+        if settings.realtimeProtection != old.realtimeProtection { security.apply(realtime: settings.realtimeProtection); onMonitorChange?() }
         if settings.monitorEnabled != old.monitorEnabled || settings.thresholdPercent != old.thresholdPercent || settings.monitoredVolume != old.monitoredVolume {
             monitor = ThresholdMonitor()
             startMonitoring()
@@ -194,7 +199,7 @@ final class AppModel: ObservableObject {
     var watching: Bool { !settings.watchedFolders.isEmpty }
 
     /// Fermer la fenêtre ne quitte pas l'appli quand elle surveille le disque ou des dossiers.
-    var keepsRunningWithoutWindow: Bool { settings.monitorEnabled || watching || LoginAgent.enabled }
+    var keepsRunningWithoutWindow: Bool { settings.monitorEnabled || watching || LoginAgent.enabled || (settings.realtimeProtection && security.config != nil) }
 
     // MARK: Seuil
 
@@ -455,6 +460,14 @@ enum Notifier {
         content.body = cause.map { L("notify.fast.body", lost, anomaly.days, URL(fileURLWithPath: $0.path).lastPathComponent) } ?? L("notify.fast.bodyNoCause", lost, anomaly.days)
         requestAuthorization()
         center?.add(UNNotificationRequest(identifier: "fast-filling", content: content, trigger: nil))
+    }
+
+    static func threat(_ name: String, isolated: Bool) {
+        let content = UNMutableNotificationContent()
+        content.title = L("notify.threat.title")
+        content.body = L(isolated ? "notify.threat.body" : "notify.threat.bodyKept", name)
+        requestAuthorization()
+        center?.add(UNNotificationRequest(identifier: "threat-" + UUID().uuidString, content: content, trigger: nil))
     }
 
     static func lowDisk(_ disk: DiskInfo) {

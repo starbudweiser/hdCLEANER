@@ -30,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         model.applyWatcher()
         model.updater.start()
         model.timeline.start()
+        model.security.start(realtime: model.settings.realtimeProtection)
         DistributedNotificationCenter.default().addObserver(forName: SingleInstance.showWindow, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.showWindow() }
         }

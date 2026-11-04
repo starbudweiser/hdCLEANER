@@ -105,6 +105,10 @@ struct SettingsView: View {
                     .tint(Socle.C.accent)
             }
             rule
+            row(L("sec.realtime"), help: L("sec.realtimeHelp")) {
+                Toggle("", isOn: $model.settings.realtimeProtection).labelsHidden()
+            }
+            rule
             row(L("settings.loginApp"), help: L("settings.loginHelp")) {
                 Toggle("", isOn: Binding(get: { atLogin }, set: { on in
                     if LoginAgent.set(on) { atLogin = on; model.onMonitorChange?() }

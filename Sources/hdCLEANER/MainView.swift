@@ -40,7 +40,7 @@ struct MainView: View {
                 DevicePanel().frame(width: 200)
                 VStack(spacing: Socle.M.space3) {
                     DiskPanel(confirming: $confirming)
-                    SocleSegmented(options: [Mode.clean, Mode.apps, Mode.timeline, Mode.duplicates, Mode.map, Mode.organize, Mode.maintenance, Mode.permissions, Mode.invisibles], selection: model.mode, label: { L("mode.\($0)") },
+                    SocleSegmented(options: [Mode.clean, Mode.apps, Mode.timeline, Mode.security, Mode.duplicates, Mode.map, Mode.organize, Mode.maintenance, Mode.permissions, Mode.invisibles], selection: model.mode, label: { L("mode.\($0)") },
                                    onSelect: { model.mode = $0; if $0 == .apps { model.loadApps() } })
                         .frame(maxWidth: .infinity, alignment: .leading)
                     switch model.mode {
@@ -51,6 +51,7 @@ struct MainView: View {
                     case .duplicates: DuplicatesView(model: model.duplicates)
                     case .map: DiskMapView(model: model.diskMap)
                     case .timeline: TimelineView(model: model.timeline)
+                    case .security: SecurityView(model: model.security)
                     case .organize: OrganizerView(model: model.organizer)
                     case .clean:
                         if model.result == nil {
