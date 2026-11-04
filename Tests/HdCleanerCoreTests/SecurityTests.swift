@@ -34,6 +34,15 @@ final class SecurityTests: XCTestCase {
         XCTAssertEqual(found.first?.rule, "HD_Launch_RemoteShell")
     }
 
+    func testLogPathInTempIsNotAThreat() throws {
+        let config = YaraEngine.Config(binary: repo.appendingPathComponent("Resources/yara"), ruleFiles: [repo.appendingPathComponent("Resources/hd_rules.yar")])
+        let dir = try temp()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let plist = "<plist><dict><key>Label</key><string>x</string><key>ProgramArguments</key><array><string>/opt/homebrew/bin/node</string><string>/Users/a/server.js</string></array><key>StandardOutPath</key><string>/tmp/x.log</string><key>StandardErrorPath</key><string>/tmp/x.err</string></dict></plist>"
+        try plist.write(to: dir.appendingPathComponent("log.plist"), atomically: true, encoding: .utf8)
+        XCTAssertTrue(YaraEngine.scan([dir.path], config: config).isEmpty)
+    }
+
     func testScansSeveralFilesAndFoldersAtOnce() throws {
         let config = YaraEngine.Config(binary: repo.appendingPathComponent("Resources/yara"),
                                        ruleFiles: [YaraEngine.xprotectRules, repo.appendingPathComponent("Resources/hd_rules.yar")])

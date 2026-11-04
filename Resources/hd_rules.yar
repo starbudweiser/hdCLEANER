@@ -6,11 +6,11 @@ rule HD_Launch_TempExecutable
     meta:
         description = "Startup item runs a program from a temporary folder"
     strings:
-        $key = /<key>(ProgramArguments|Program)<\/key>/
-        $tmp = /<string>(\/private)?\/(var\/)?tmp\/[^<]+<\/string>/
-        $shared = /<string>\/Users\/Shared\/[^<]+<\/string>/
+        // Only the program itself (Program / ProgramArguments), not log paths such as StandardOutPath.
+        $tmp = /<key>(ProgramArguments|Program)<\/key>\s*(<array>\s*)?(<string>[^<]*<\/string>\s*){0,8}<string>(\/private)?\/(var\/)?tmp\/[^<]+<\/string>/
+        $shared = /<key>(ProgramArguments|Program)<\/key>\s*(<array>\s*)?(<string>[^<]*<\/string>\s*){0,8}<string>\/Users\/Shared\/[^<]+<\/string>/
     condition:
-        filesize < 64KB and $key and ($tmp or $shared)
+        filesize < 64KB and ($tmp or $shared)
 }
 
 rule HD_Launch_RemoteShell
