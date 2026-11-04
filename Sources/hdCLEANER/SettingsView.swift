@@ -34,7 +34,7 @@ enum SettingsWindow {
         }
         guard let window else { return }
         let wasVisible = window.isVisible
-        window.setContentSize(NSSize(width: 520, height: 460)) // taille fixe connue d'avance : le centrage ne dépend pas de la première mise en page
+        if let view = window.contentViewController?.view { window.setContentSize(view.fittingSize) } // taille de l'onglet, connue avant le centrage
         if !wasVisible { window.socleCenter() }
         window.present()
         if !wasVisible { DispatchQueue.main.async { window.socleCenter() } }
@@ -59,10 +59,9 @@ struct SettingsView: View {
             case .exclusions: exclusions
             case .updates: updates
             }
-            Spacer(minLength: 0)
         }
         .padding(Socle.M.space5)
-        .frame(width: 520, height: 460, alignment: .topLeading)
+        .frame(width: 520, alignment: .topLeading)
         .background(Socle.C.bg)
         .toggleStyle(.switch)
         .onAppear { model.refreshDisk() } // liste des volumes à jour (disque externe branché depuis)
@@ -211,6 +210,7 @@ struct SettingsView: View {
                     }
                     .padding(.horizontal, Socle.M.space4)
                 }
+                .frame(height: 220)
                 .background(Socle.C.surface).overlay(Rectangle().stroke(Socle.C.border, lineWidth: 1))
             }
         }
