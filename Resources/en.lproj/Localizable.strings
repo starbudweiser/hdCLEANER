@@ -91,6 +91,9 @@
 "apps.loading" = "Reading applications…";
 "apps.select" = "Choose an app to uninstall.";
 "apps.help" = "The app and the ticked files will go to the Trash.";
+"apps.drop" = "Drop the app here";
+"apps.dropHint" = "App missing from the list? Drag it here.";
+"apps.dropRejected" = "Ignored: not an app that can be uninstalled.";
 "apps.running" = "Quit this app first.";
 "apps.uninstall" = "Uninstall";
 "mode.maintenance" = "Maintenance";

@@ -101,6 +101,9 @@ T = [
 ("apps.loading", "Lecture des applications…", "Reading applications…", "Leyendo aplicaciones…", "Lettura delle applicazioni…"),
 ("apps.select", "Choisissez une appli à désinstaller.", "Choose an app to uninstall.", "Elige una app para desinstalar.", "Scegli un'app da disinstallare."),
 ("apps.help", "L'appli et les fichiers cochés iront à la Corbeille.", "The app and the ticked files will go to the Trash.", "La app y los archivos marcados irán a la Papelera.", "L'app e i file spuntati andranno nel Cestino."),
+("apps.drop", "Déposez l'appli ici", "Drop the app here", "Suelta la app aquí", "Trascina qui l'app"),
+("apps.dropHint", "Une appli absente de la liste ? Glissez-la ici.", "App missing from the list? Drag it here.", "¿Una app que no aparece? Arrástrala aquí.", "App non in elenco? Trascinala qui."),
+("apps.dropRejected", "Fichier ignoré : ce n'est pas une appli désinstallable.", "Ignored: not an app that can be uninstalled.", "Ignorado: no es una app desinstalable.", "Ignorato: non è un'app disinstallabile."),
 ("apps.running", "Fermez d'abord cette appli.", "Quit this app first.", "Cierra primero esta app.", "Chiudi prima quest'app."),
 ("apps.uninstall", "Désinstaller", "Uninstall", "Desinstalar", "Disinstalla"),
 # --- entretien, permissions, fichiers invisibles

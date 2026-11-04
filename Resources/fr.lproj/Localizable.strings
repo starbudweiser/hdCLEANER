@@ -91,6 +91,9 @@
 "apps.loading" = "Lecture des applications…";
 "apps.select" = "Choisissez une appli à désinstaller.";
 "apps.help" = "L'appli et les fichiers cochés iront à la Corbeille.";
+"apps.drop" = "Déposez l'appli ici";
+"apps.dropHint" = "Une appli absente de la liste ? Glissez-la ici.";
+"apps.dropRejected" = "Fichier ignoré : ce n'est pas une appli désinstallable.";
 "apps.running" = "Fermez d'abord cette appli.";
 "apps.uninstall" = "Désinstaller";
 "mode.maintenance" = "Entretien";

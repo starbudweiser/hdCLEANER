@@ -522,6 +522,8 @@ private struct ConfirmDialog: View {
 private struct AppsView: View {
     @EnvironmentObject private var model: AppModel
     @State private var query = ""
+    @State private var dropTargeted = false
+    @State private var rejected = 0
 
     private var shown: [AppEntry] {
         let q = query.trimmingCharacters(in: .whitespaces)
@@ -555,11 +557,33 @@ private struct AppsView: View {
                             LazyVStack(spacing: 0) { ForEach(model.related) { relatedRow($0) } }
                         }
                     } else {
-                        Text(L("apps.select")).socle(Socle.T.body).foregroundStyle(Socle.C.textMuted).frame(maxWidth: .infinity, maxHeight: .infinity)
+                        Text(L("apps.select") + "\n" + L("apps.dropHint")).multilineTextAlignment(.center).socle(Socle.T.body).foregroundStyle(Socle.C.textMuted).frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
             }
         }
+        .overlay {
+            if dropTargeted {
+                RoundedRectangle(cornerRadius: Socle.M.radius).stroke(Socle.C.accent, style: StrokeStyle(lineWidth: 2, dash: [6]))
+                    .background(Socle.C.surfaceSelected.opacity(0.4))
+                    .overlay(Text(L("apps.drop")).socle(Socle.T.title).foregroundStyle(Socle.C.textStrong))
+                    .allowsHitTesting(false)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if rejected > 0 {
+                Text(L("apps.dropRejected")).socle(Socle.T.meta).foregroundStyle(Socle.C.warning)
+                    .padding(Socle.M.space2).background(Socle.C.surfaceRaised, in: RoundedRectangle(cornerRadius: Socle.M.radius))
+                    .padding(Socle.M.space2)
+            }
+        }
+        .dropDestination(for: URL.self) { urls, _ in
+            Task {
+                rejected = await model.addDroppedApps(urls)
+                if rejected > 0 { try? await Task.sleep(nanoseconds: 4_000_000_000); rejected = 0 }
+            }
+            return !urls.isEmpty
+        } isTargeted: { dropTargeted = $0 }
     }
 
     private func row(_ app: AppEntry) -> some View {

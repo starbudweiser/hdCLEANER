@@ -246,6 +246,19 @@ extension AppModel {
         }
     }
 
+    /// Applis déposées dans la fenêtre : ajoutées à la liste (sans doublon), la dernière est sélectionnée. Renvoie le nombre refusé.
+    @discardableResult
+    func addDroppedApps(_ urls: [URL]) async -> Int {
+        let home = home
+        let found = await Task.detached(priority: .userInitiated) { urls.map { Uninstaller.entry(at: $0, home: home) } }.value
+        var last: AppEntry?
+        for entry in found.compactMap({ $0 }) {
+            if let i = apps.firstIndex(where: { $0.path == entry.path }) { apps[i].size = entry.size; last = apps[i] } else { apps.append(entry); last = entry }
+        }
+        if let last { select(last) }
+        return found.filter { $0 == nil }.count
+    }
+
     func isRunning(_ app: AppEntry) -> Bool {
         !app.bundleID.isEmpty && !NSRunningApplication.runningApplications(withBundleIdentifier: app.bundleID).isEmpty
     }

@@ -40,6 +40,16 @@ public enum PathGuard {
         }
     }
 
+    /// Une appli déposée par l'utilisateur, hors des dossiers Applications : dossier personnel, /Applications (sous-dossiers compris) ou disque monté.
+    /// Jamais le système, ni une appli à l'intérieur d'une autre appli.
+    public static func isSafeDroppedApp(_ path: String, home: URL, root: URL = URL(fileURLWithPath: "/"), volumesRoot: String = "/Volumes") -> Bool {
+        guard URL(fileURLWithPath: path).standardizedFileURL.path == path, path.hasSuffix(".app"), URL(fileURLWithPath: path).lastPathComponent != ".app" else { return false }
+        let parent = URL(fileURLWithPath: path).deletingLastPathComponent().path
+        guard !parent.contains(".app/"), !parent.hasSuffix(".app") else { return false }
+        if relative(path, to: prefix(root) + "/Applications") != nil { return true }
+        return isSafeUserFile(path, home: home, volumesRoot: volumesRoot)
+    }
+
     /// Emplacements système où la suppression avec mot de passe est permise.
     public static func isSafeAdmin(_ path: String, home: URL, root: URL = URL(fileURLWithPath: "/")) -> Bool {
         guard URL(fileURLWithPath: path).standardizedFileURL.path == path else { return false }
@@ -81,7 +91,7 @@ public enum Cleaner {
             progress(Double(index) / Double(max(items.count, 1)))
             switch item.disposal {
             case .delete, .trash:
-                let allowed = PathGuard.isSafe(item.path, home: home) || (item.disposal == .trash && PathGuard.isSafeAppBundle(item.path, home: home, root: systemRoot))
+                let allowed = PathGuard.isSafe(item.path, home: home) || (item.disposal == .trash && (PathGuard.isSafeAppBundle(item.path, home: home, root: systemRoot) || PathGuard.isSafeDroppedApp(item.path, home: home, root: systemRoot)))
                 guard allowed else {
                     report.failures.append(item.path)
                     continue

@@ -38,6 +38,18 @@ public enum Uninstaller {
         return apps.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
+    /// Fiche d'une appli choisie à la main (glisser-déposer) ; nil si ce n'est pas une appli que l'on peut désinstaller.
+    public static func entry(at url: URL, home: URL) -> AppEntry? {
+        let u = url.standardizedFileURL
+        guard u.pathExtension == "app", (try? u.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true,
+              PathGuard.isSafeDroppedApp(u.path, home: home) else { return nil }
+        let info = NSDictionary(contentsOf: u.appendingPathComponent("Contents/Info.plist"))
+        let id = info?["CFBundleIdentifier"] as? String ?? ""
+        guard !id.hasPrefix("com.apple.") else { return nil }
+        let named = [info?["CFBundleDisplayName"] as? String, info?["CFBundleName"] as? String].compactMap { $0 }.first { !$0.isEmpty }
+        return AppEntry(name: named ?? u.deletingPathExtension().lastPathComponent, bundleID: id, path: u.path, size: DiskSize.bytes(of: u))
+    }
+
     /// Chemins que l'appli a pu laisser dans la Bibliothèque ; ceux qui n'existent pas sont écartés par l'appelant.
     static func candidates(bundleID: String, name: String, home: URL) -> [URL] {
         let fm = FileManager.default

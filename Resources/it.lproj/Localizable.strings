@@ -91,6 +91,9 @@
 "apps.loading" = "Lettura delle applicazioni…";
 "apps.select" = "Scegli un'app da disinstallare.";
 "apps.help" = "L'app e i file spuntati andranno nel Cestino.";
+"apps.drop" = "Trascina qui l'app";
+"apps.dropHint" = "App non in elenco? Trascinala qui.";
+"apps.dropRejected" = "Ignorato: non è un'app disinstallabile.";
 "apps.running" = "Chiudi prima quest'app.";
 "apps.uninstall" = "Disinstalla";
 "mode.maintenance" = "Manutenzione";

@@ -91,6 +91,9 @@
 "apps.loading" = "Leyendo aplicaciones…";
 "apps.select" = "Elige una app para desinstalar.";
 "apps.help" = "La app y los archivos marcados irán a la Papelera.";
+"apps.drop" = "Suelta la app aquí";
+"apps.dropHint" = "¿Una app que no aparece? Arrástrala aquí.";
+"apps.dropRejected" = "Ignorado: no es una app desinstalable.";
 "apps.running" = "Cierra primero esta app.";
 "apps.uninstall" = "Desinstalar";
 "mode.maintenance" = "Mantenimiento";
