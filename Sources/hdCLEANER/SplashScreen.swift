@@ -2,7 +2,7 @@
 // Fichier autonome, à copier tel quel dans une autre appli Swift :
 //   1. au lancement (applicationWillFinishLaunching, avant l'ouverture des fenêtres) : Splash.shared.start(Splash.Config(…))
 //   2. sur la vue racine de la fenêtre principale : .splashGated()
-// Chronologie : t = 0 splash visible → t = 2 s fenêtre de l'appli → t = 4 s sortie du splash (600 ms).
+// Chronologie : t = 0 splash visible → t = 2 s fenêtre de l'appli → t = 3 s sortie du splash (600 ms).
 // Fenêtre pas prête à 2 s : elle s'ouvre dès qu'elle l'est et le splash l'attend avant de sortir.
 // « Réduire les animations » (Réglages Système) : splash fixe, mêmes durées.
 import AppKit
@@ -40,7 +40,7 @@ final class Splash {
     // Règle Socle : fenêtre de size-splash-width × size-splash-height (carte 476 × 166 et marge de 12 px).
     static let size = CGSize(width: 500, height: 190)
     static let openMainAfter: TimeInterval = 2
-    static let minShown: TimeInterval = 4
+    static let minShown: TimeInterval = 3
     static let leaveDuration: TimeInterval = 0.6
 
     private var panel: NSPanel?
