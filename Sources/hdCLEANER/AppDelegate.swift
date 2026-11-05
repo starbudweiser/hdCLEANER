@@ -245,17 +245,16 @@ final class MonitorStatus: NSObject {
         header?.title = text
     }
 
-    /// Réaffecter une info-bulle identique la relance : elle restait affichée et suivait le pointeur.
+    /// Pas d'info-bulle système sur l'icône : macOS la laissait affichée et elle suivait le pointeur dans les autres applis.
+    /// Le même texte est dans l'en-tête du menu et dans le titre de l'icône.
     private func setTip(_ button: NSStatusBarButton, _ text: String) {
         tip = text
-        if button.toolTip != text { button.toolTip = text }
+        button.toolTip = nil
     }
 
     @objc private func showMenu(_ sender: NSStatusBarButton) {
         guard let menu else { return }
-        sender.toolTip = nil // pas d'info-bulle par-dessus le menu
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.isFlipped ? sender.bounds.maxY + 4 : -4), in: sender)
-        sender.toolTip = tip
     }
 
     @objc private func openWindow() { open() }
