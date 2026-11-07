@@ -263,6 +263,11 @@
 "settings.login" = "Vigilar desde el inicio de sesión";
 "settings.loginApp" = "Abrir al iniciar sesión";
 "settings.loginHelp" = "hdCLEANER se inicia en segundo plano, con su icono en la barra de menús.";
+"settings.iconMode" = "Icono de la aplicación";
+"settings.iconHelp" = "Barra de menús: el Dock muestra la app solo con la ventana abierta.";
+"icon.dock" = "Dock";
+"icon.menuBar" = "Barra de menús";
+"icon.both" = "Ambos";
 "settings.exclusionsHelp" = "Estos elementos, y todo lo que contienen, ya no se proponen. Usa el icono del ojo tachado de una fila de la lista, el clic derecho o «Añadir…».";
 "settings.exclusionsEmpty" = "Sin exclusiones.";
 "settings.title" = "Ajustes";

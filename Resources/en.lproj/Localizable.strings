@@ -263,6 +263,11 @@
 "settings.login" = "Monitor from login";
 "settings.loginApp" = "Launch at login";
 "settings.loginHelp" = "hdCLEANER starts in the background, with its icon in the menu bar.";
+"settings.iconMode" = "App icon";
+"settings.iconHelp" = "Menu bar: the Dock shows the app only while its window is open.";
+"icon.dock" = "Dock";
+"icon.menuBar" = "Menu bar";
+"icon.both" = "Both";
 "settings.exclusionsHelp" = "These items, and everything inside them, are no longer suggested. Use the crossed-out eye icon on a list row, right-click, or “Add…”.";
 "settings.exclusionsEmpty" = "No exclusions.";
 "settings.title" = "Settings";

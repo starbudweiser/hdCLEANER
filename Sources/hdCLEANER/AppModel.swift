@@ -46,6 +46,7 @@ final class AppModel: ObservableObject {
     let device = DeviceInfo.read()
     let home: URL
     var onMonitorChange: (() -> Void)?
+    var onIconModeChange: (() -> Void)?
     private var monitor = ThresholdMonitor()
     private var timer: Timer?
     private var cancel = CancelFlag()
@@ -103,6 +104,7 @@ final class AppModel: ObservableObject {
         defaults.set(try? JSONEncoder().encode(settings), forKey: Self.settingsKey)
         if settings.theme != old.theme { Socle.apply(socleTheme) }
         if settings.watchedFolders != old.watchedFolders { applyWatcher() }
+        if settings.iconMode != old.iconMode { onIconModeChange?(); onMonitorChange?() }
         if settings.realtimeProtection != old.realtimeProtection { security.apply(realtime: settings.realtimeProtection); onMonitorChange?() }
         if settings.monitorEnabled != old.monitorEnabled || settings.thresholdPercent != old.thresholdPercent || settings.monitoredVolume != old.monitoredVolume {
             monitor = ThresholdMonitor()
@@ -199,6 +201,10 @@ final class AppModel: ObservableObject {
     var watching: Bool { !settings.watchedFolders.isEmpty }
 
     /// Fermer la fenêtre ne quitte pas l'appli quand elle surveille le disque ou des dossiers.
+    /// Icône dans la barre des menus (modes « barre des menus » et « les deux »).
+    var showsStatusItem: Bool { settings.iconMode != .dock }
+    /// Icône du Dock gardée même sans fenêtre (modes « Dock » et « les deux »).
+    var staysInDock: Bool { settings.iconMode != .menuBar }
     var keepsRunningWithoutWindow: Bool { settings.monitorEnabled || watching || LoginAgent.enabled || (settings.realtimeProtection && security.config != nil) }
 
     // MARK: Seuil

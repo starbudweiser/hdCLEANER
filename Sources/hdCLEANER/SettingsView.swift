@@ -105,6 +105,10 @@ struct SettingsView: View {
                     .tint(Socle.C.accent)
             }
             rule
+            row(L("settings.iconMode"), help: L("settings.iconHelp"), stacked: true) {
+                SocleSegmented(options: IconMode.allCases, selection: model.settings.iconMode, label: { L("icon.\($0.rawValue)") }, onSelect: { model.settings.iconMode = $0 })
+            }
+            rule
             row(L("sec.realtime"), help: L("sec.realtimeHelp")) {
                 Toggle("", isOn: $model.settings.realtimeProtection).labelsHidden()
             }

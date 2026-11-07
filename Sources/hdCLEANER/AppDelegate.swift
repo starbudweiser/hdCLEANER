@@ -34,8 +34,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         DistributedNotificationCenter.default().addObserver(forName: SingleInstance.showWindow, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.showWindow() }
         }
+        model.onIconModeChange = { [weak self] in self?.applyDockPolicy() }
         if background {
-            NSApp.setActivationPolicy(.accessory)
+            NSApp.setActivationPolicy(model.staysInDock ? .regular : .accessory)
         } else {
             startSplash()
             NSApp.setActivationPolicy(.regular)
@@ -72,7 +73,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         if let w = notification.object as? NSWindow { WindowSize.save(w) }
-        if model.keepsRunningWithoutWindow { NSApp.setActivationPolicy(.accessory) } // plus d'icône dans le Dock sans fenêtre
+        if model.keepsRunningWithoutWindow && !model.staysInDock { NSApp.setActivationPolicy(.accessory) } // plus d'icône dans le Dock sans fenêtre
+    }
+
+    /// Applique le choix d'icône : Dock gardé en permanence, ou seulement tant que la fenêtre est ouverte.
+    private func applyDockPolicy() {
+        #if HDCLEANER_SELFTEST
+        if ProcessInfo.processInfo.environment["HDCLEANER_QUIET"] != nil { return }
+        #endif
+        NSApp.setActivationPolicy(model.staysInDock || window?.isVisible == true ? .regular : .accessory)
     }
 
     private func showWindow() {
@@ -173,7 +182,7 @@ final class MonitorStatus: NSObject {
     }
 
     private func render() {
-        guard model.keepsRunningWithoutWindow else {
+        guard model.showsStatusItem else {
             if let item { NSStatusBar.system.removeStatusItem(item) }
             item = nil
             menu = nil

@@ -5,6 +5,11 @@ public enum ThemeChoice: String, Codable, CaseIterable {
 }
 
 /// Réglages de l'appli, enregistrés en JSON dans UserDefaults.
+/// Où vit l'icône de l'appli : Dock, barre des menus, ou les deux.
+public enum IconMode: String, Codable, CaseIterable {
+    case dock, menuBar, both
+}
+
 public struct AppSettings: Codable, Equatable {
     public var theme = ThemeChoice.dark
     public var largeFileMinimumMB = 500
@@ -19,6 +24,8 @@ public struct AppSettings: Codable, Equatable {
     public var autoUpdate = true
     /// Surveillance des éléments de démarrage automatique (antivirus temps réel, sans calcul tant que rien ne change).
     public var realtimeProtection = true
+    /// Icône dans le Dock, dans la barre des menus ou les deux (barre des menus : le Dock n'apparaît que fenêtre ouverte).
+    public var iconMode = IconMode.menuBar
 
     public init() {}
 
@@ -34,6 +41,7 @@ public struct AppSettings: Codable, Equatable {
         watchedFolders = (try? c.decode([String].self, forKey: .watchedFolders)) ?? d.watchedFolders
         autoUpdate = (try? c.decode(Bool.self, forKey: .autoUpdate)) ?? d.autoUpdate
         realtimeProtection = (try? c.decode(Bool.self, forKey: .realtimeProtection)) ?? d.realtimeProtection
+        iconMode = (try? c.decode(IconMode.self, forKey: .iconMode)) ?? d.iconMode
     }
 
     /// Ramène les valeurs dans les plages de l'interface.
