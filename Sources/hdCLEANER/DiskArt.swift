@@ -34,8 +34,9 @@ struct DiskMark: View {
                 Circle().fill(paper).frame(width: 14, height: 14).offset(x: 23)
             }
             .frame(width: 46, height: 6)
+            // la rotation se fait avant le placement : le pivot est l'extrémité droite du bras (le bras entier tournait autour du coin de l'icône)
+            .rotationEffect(.degrees(on ? 45 : 90), anchor: .trailing)
             .position(x: 88 - 23, y: 88)
-            .rotationEffect(.degrees(on ? 45 : 82), anchor: UnitPoint(x: 1, y: 0.5))
             .animation(animated ? .timingCurve(0.22, 1, 0.36, 1, duration: 1.1).delay(0.9) : nil, value: on)
         }
         .frame(width: 108, height: 108)

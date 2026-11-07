@@ -424,7 +424,7 @@ final class UpdateEngine: ObservableObject {
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = text
-        alert.runModal()
+        alert.runCenteredOnAppWindow()
     }
 
     /// Texte d'un état d'échec (clé err_*), dans la langue de l'appli.
