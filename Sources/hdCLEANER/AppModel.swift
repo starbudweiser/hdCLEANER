@@ -3,7 +3,7 @@ import Combine
 import HdCleanerCore
 import UserNotifications
 
-enum Mode: Hashable { case clean, apps, maintenance, permissions, invisibles, duplicates, map, organize, timeline, security }
+enum Mode: Hashable { case overview, clean, apps, maintenance, permissions, invisibles, duplicates, map, organize, timeline, security }
 
 enum Phase: Equatable {
     case idle
@@ -25,7 +25,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var report: CleanReport?
     @Published var selection = Set<String>()
     @Published var category = JunkCategory.appCaches
-    @Published var mode = Mode.clean
+    @Published var mode = Mode.overview
     @Published private(set) var apps: [AppEntry] = []
     @Published private(set) var loadingApps = false
     @Published private(set) var sizesReady = false

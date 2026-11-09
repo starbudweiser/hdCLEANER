@@ -322,6 +322,8 @@ final class UpdateEngine: ObservableObject {
     private(set) var brandName: String?
     /// Vérification automatique active (réglage de l'appli, s'il y en a un).
     var autoCheck: () -> Bool = { true }
+    /// Installation sans question quand une version paraît (réglage de l'appli, s'il y en a un) ; sinon la fenêtre est proposée.
+    var autoInstall: () -> Bool = { false }
     /// Appli occupée (nettoyage en cours…) : l'installation attend.
     var canInstall: () -> Bool = { true }
 
@@ -395,7 +397,10 @@ final class UpdateEngine: ObservableObject {
             let plan = UpdatePlan(current: currentVersion, target: target, releases: newer)
             self.plan = plan
             state = .available(plan)
-            if manual { present(plan) } else if defaults.string(forKey: "updater.skipped") != target.version { presentWhenActive(plan) }
+            if manual { present(plan) }
+            else if defaults.string(forKey: "updater.skipped") != target.version {
+                if autoInstall() && canInstall() { install(plan) } else { presentWhenActive(plan) }
+            }
         }
     }
 

@@ -293,6 +293,9 @@ enum SelfTest {
         model.scan()
         wait(model)
         save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("main.png"))
+        model.mode = .overview
+        save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("overview.png"))
+        model.mode = .clean
         for tab in SettingsTab.allCases { // fenêtre des réglages, chaque onglet
             save(SettingsView(tab: tab).environmentObject(model), size: NSSize(width: 520, height: 460), to: dir.appendingPathComponent("settings-\(tab.rawValue).png"))
         }

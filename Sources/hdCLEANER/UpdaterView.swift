@@ -167,6 +167,7 @@ extension NSAlert {
     /// Comme `runModal()`, mais centrée sur la fenêtre de l'appli : `runModal()` replace lui-même l'alerte dans le tiers haut de l'écran.
     @MainActor @discardableResult func runCenteredOnAppWindow() -> NSApplication.ModalResponse {
         layout()
+        centerContent()
         window.updaterCenter()
         // L'alerte se replace à son affichage : on recentre au tour de boucle suivant, une fois la fenêtre à l'écran.
         for delay in [0.0, 0.05, 0.2] {
@@ -176,5 +177,27 @@ extension NSAlert {
         let response = NSApp.runModal(for: window)
         window.orderOut(nil)
         return response
+    }
+
+    /// Icône et textes centrés dans la largeur de l'alerte (règle Socle des textes centrés) ; macOS les cale à gauche.
+    @MainActor private func centerContent() {
+        guard let content = window.contentView else { return }
+        func walk(_ view: NSView) {
+            for v in view.subviews {
+                if let field = v as? NSTextField, !field.isEditable {
+                    field.alignment = .center
+                    if let text = field.attributedStringValue.mutableCopy() as? NSMutableAttributedString, text.length > 0 {
+                        let paragraph = NSMutableParagraphStyle()
+                        paragraph.alignment = .center
+                        text.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: text.length))
+                        field.attributedStringValue = text
+                    }
+                } else if let image = v as? NSImageView, image.frame.width <= 128 {
+                    image.setFrameOrigin(NSPoint(x: ((view.bounds.width - image.frame.width) / 2).rounded(), y: image.frame.origin.y))
+                }
+                walk(v)
+            }
+        }
+        walk(content)
     }
 }

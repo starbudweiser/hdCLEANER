@@ -3,7 +3,7 @@ import HdCleanerCore
 import SwiftUI
 
 /// Couleur fixe de chaque catégorie, commune à la liste et à la barre du disque.
-private extension JunkCategory {
+extension JunkCategory {
     var color: Color {
         let hex: UInt32 = switch self {
         case .appCaches: 0x2DD4BF
@@ -37,13 +37,11 @@ struct MainView: View {
     var body: some View {
         ZStack {
             HStack(spacing: Socle.M.space3) {
-                DevicePanel().frame(width: 200)
-                VStack(spacing: Socle.M.space3) {
-                    DiskPanel(confirming: $confirming)
-                    SocleSegmented(options: [Mode.clean, Mode.apps, Mode.timeline, Mode.security, Mode.duplicates, Mode.map, Mode.organize, Mode.maintenance, Mode.permissions, Mode.invisibles], selection: model.mode, label: { L("mode.\($0)") },
-                                   onSelect: { model.mode = $0; if $0 == .apps { model.loadApps() } })
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                SidebarView().frame(width: 200)
+                VStack(alignment: .leading, spacing: Socle.M.space3) {
+                    if model.mode != .overview { header }
                     switch model.mode {
+                    case .overview: OverviewView(confirming: $confirming)
                     case .apps: AppsView()
                     case .maintenance: MaintenanceView(model: model.maintenance)
                     case .permissions: PermissionsView(model: model.permissions)
@@ -65,6 +63,7 @@ struct MainView: View {
                     }
                     if model.mode == .clean || model.mode == .apps { FooterPanel(confirming: $confirming) }
                 }
+                .padding(.top, Socle.M.space1)
             }
             .padding(Socle.M.space3)
             if confirming {
@@ -78,6 +77,16 @@ struct MainView: View {
         .frame(minWidth: 980, minHeight: 600)
         .background(Socle.C.bg)
     }
+
+    @ViewBuilder private var header: some View {
+        PageHeader(title: model.mode.title, subtitle: model.mode.subtitle) {
+            if model.mode == .clean {
+                let idle: Bool = { if case .idle = model.phase { true } else { false } }()
+                Button(L(model.result == nil ? "scan.start" : "scan.again")) { model.scan() }
+                    .buttonStyle(SocleButtonStyle(.secondary)).disabled(!idle)
+            }
+        }
+    }
 }
 
 struct Panel<Content: View>: View {
@@ -87,142 +96,6 @@ struct Panel<Content: View>: View {
         content
             .background(Socle.C.surface, in: RoundedRectangle(cornerRadius: Socle.M.radius))
             .overlay(RoundedRectangle(cornerRadius: Socle.M.radius).stroke(Socle.C.border))
-    }
-}
-
-private struct DevicePanel: View {
-    @EnvironmentObject private var model: AppModel
-
-    private func fact(_ title: String, _ value: String) -> some View {
-        VStack(spacing: 2) {
-            Text(title).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted)
-            Text(value).socle(Socle.T.label).foregroundStyle(Socle.C.text).multilineTextAlignment(.center)
-        }
-    }
-
-    var body: some View {
-        Panel {
-            VStack(spacing: Socle.M.space4) {
-                Text(branded: "hdCLEANER").socle(Socle.T.heading).padding(.top, Socle.M.space2)
-                Image(systemName: model.device.symbol).font(.system(size: 64, weight: .light)).foregroundStyle(Socle.C.textMuted).padding(.vertical, Socle.M.space3)
-                Text(model.device.model).socle(Socle.T.title).foregroundStyle(Socle.C.textStrong).multilineTextAlignment(.center)
-                fact(L("device.system"), model.device.system)
-                fact(L("device.display"), model.device.display)
-                fact(L("device.processor"), model.device.processor)
-                fact(L("device.memory"), model.device.memory)
-                Spacer()
-            }
-            .padding(Socle.M.space3)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(DiskWatermark())
-            .clipShape(RoundedRectangle(cornerRadius: Socle.M.radius))
-        }
-    }
-}
-
-private struct DiskPanel: View {
-    @Binding var confirming: Bool
-    @EnvironmentObject private var model: AppModel
-
-    private var segments: [(color: Color, bytes: Int64)] {
-        guard let disk = model.disk else { return [] }
-        let junk = JunkCategory.allCases.compactMap { c -> (Color, Int64)? in
-            let bytes = model.result?.total(c) ?? 0
-            return bytes > 0 ? (c.color, bytes) : nil
-        }
-        let found = junk.reduce(0) { $0 + $1.1 }
-        return junk + [(Socle.C.textSubtle, max(disk.used - found, 0)), (Socle.C.control, disk.available)]
-    }
-
-    var body: some View {
-        Panel {
-            HStack(spacing: Socle.M.space4) {
-                Image(systemName: "internaldrive").font(.system(size: 34, weight: .light)).foregroundStyle(Socle.C.textMuted)
-                VStack(alignment: .leading, spacing: Socle.M.space2) {
-                    HStack {
-                        Text(model.disk?.name ?? "").socle(Socle.T.title).foregroundStyle(Socle.C.textStrong)
-                        Text(SizeFormat.text(model.disk?.total ?? 0)).socle(Socle.T.body).foregroundStyle(Socle.C.textMuted)
-                        Spacer()
-                        if model.settings.monitorEnabled { monitorBadge }
-                    }
-                    GeometryReader { geo in
-                        HStack(spacing: 1) {
-                            let total = max(segments.reduce(0) { $0 + $1.bytes }, 1)
-                            ForEach(Array(segments.enumerated()), id: \.offset) { _, s in
-                                Rectangle().fill(s.color).frame(width: max(CGFloat(Double(s.bytes) / Double(total)) * geo.size.width - 1, 1))
-                            }
-                        }
-                    }
-                    .frame(height: 12)
-                    .clipShape(RoundedRectangle(cornerRadius: 2))
-                    HStack(spacing: Socle.M.space4) {
-                        Text(L("disk.used", SizeFormat.text(model.disk?.used ?? 0)))
-                        Text(L("disk.free", SizeFormat.text(model.disk?.available ?? 0))).socleValue()
-                    }
-                    .socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted).lineLimit(1)
-                    // Deuxième ligne : chaque mesure est suivie de son bouton ; elle passe à la ligne si la fenêtre est étroite.
-                    if model.result != nil || (model.disk?.purgeable ?? 0) > 0 {
-                        ViewThatFits(in: .horizontal) {
-                            actions(stacked: false)
-                            actions(stacked: true)
-                        }
-                    }
-                }
-            }
-            .padding(Socle.M.space3)
-        }
-    }
-
-    private func actions(stacked: Bool) -> some View {
-        let layout = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: Socle.M.space2)) : AnyLayout(HStackLayout(spacing: Socle.M.space5))
-        return layout {
-            if model.result != nil {
-                HStack(spacing: Socle.M.space2) {
-                    Text(L("disk.junk", SizeFormat.text(model.result?.total ?? 0)))
-                    if case .idle = model.phase { reclaimButton }
-                }
-            }
-            if let purgeable = model.disk?.purgeable, purgeable > 0 {
-                HStack(spacing: Socle.M.space2) {
-                    Text(L("disk.purgeable", SizeFormat.text(purgeable)))
-                    if case .idle = model.phase, model.result != nil { freeButton }
-                }
-            }
-        }
-        .socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted).lineLimit(1).fixedSize(horizontal: true, vertical: false)
-    }
-
-    /// Récupère ce qui est coché (par défaut les éléments sûrs) : même confirmation que le bouton « Nettoyer » du bas.
-    private var reclaimButton: some View {
-        let gain = model.selectedItems.reduce(0) { $0 + $1.size }
-        return Button(L("disk.reclaim", SizeFormat.text(gain))) {
-            model.mode = .clean
-            confirming = true
-        }
-        .buttonStyle(SocleButtonStyle(.action, height: 24)).fixedSize().disabled(model.selection.isEmpty)
-    }
-
-    /// L'espace purgeable vient surtout des instantanés Time Machine locaux : on les propose seuls à la confirmation (mot de passe administrateur).
-    @ViewBuilder private var freeButton: some View {
-        let snapshots = model.result?.items[.snapshots] ?? []
-        if !snapshots.isEmpty {
-            Button(L("disk.free.button")) {
-                model.selection = Set(snapshots.map(\.path))
-                model.category = .snapshots
-                model.mode = .clean
-                confirming = true
-            }
-            .buttonStyle(SocleButtonStyle(.secondary, height: 24)).fixedSize()
-        }
-    }
-
-    private var monitorBadge: some View {
-        HStack(spacing: Socle.M.space1_5) {
-            Circle().fill(model.belowThreshold ? Socle.C.danger : Socle.C.success).frame(width: 8, height: 8)
-            Text(L(model.belowThreshold ? "monitor.below" : "monitor.badge", model.monitoredDisk?.name ?? "–")).socle(Socle.T.meta).foregroundStyle(Socle.C.text)
-        }
-        .padding(.horizontal, Socle.M.space2).frame(height: 22)
-        .background(Socle.C.bgSunken, in: RoundedRectangle(cornerRadius: Socle.M.radius))
     }
 }
 
@@ -434,8 +307,6 @@ private struct FooterPanel: View {
     }
 
     @ViewBuilder private var cleanControls: some View {
-        Button(L(model.result == nil ? "scan.start" : "scan.again")) { model.scan() }
-            .buttonStyle(SocleButtonStyle(.primary)).fixedSize()
         message
         Spacer()
         if model.result != nil {
