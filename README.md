@@ -1,5 +1,7 @@
 # hdCLEANER
 
+[![Listed on OpenMacApps](https://openmacapps.com/badge.svg)](https://openmacapps.com/apps/hdcleaner/)
+
 A macOS disk cleaner: it scans the usual places for junk, shows what each category would free, and removes what you tick.
 
 ## About
