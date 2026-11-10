@@ -1,8 +1,12 @@
+<p align="center"><img src="assets/icon.png" width="128" alt="hdCLEANER"></p>
+
 # hdCLEANER
 
-[![Listed on OpenMacApps](https://openmacapps.com/badge.svg)](https://openmacapps.com/apps/hdcleaner/)
+[![Listed on OpenMacApps](https://openmacapps.com/badge.svg)](https://openmacapps.com/apps/hdcleaner/) [![Latest release](https://img.shields.io/github/v/release/starbudweiser/hdCLEANER)](https://github.com/starbudweiser/hdCLEANER/releases/latest) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 A macOS disk cleaner: it scans the usual places for junk, shows what each category would free, and removes what you tick.
+
+🇬🇧 English · 🇫🇷 [Français](#français)
 
 ## About
 
@@ -25,11 +29,15 @@ hdCLEANER is a personal take on AppYogi's *Disk Cleaner* — not affiliated with
 
 Some folders (Mail, Safari, Containers…) need *Full Disk Access*; the app says so on the category instead of showing an empty list.
 
-## Updates
+## Install
+
+**[Download the latest notarized release](https://github.com/starbudweiser/hdCLEANER/releases/latest)**, unzip it and move **hdCLEANER.app** to your Applications folder. Requires **macOS 14 Sonoma** or later.
+
+### Updates
 
 The app checks GitHub once a day for a new release and shows what changed before anything is installed. "Check for updates…" (app menu, menu bar icon, Settings > Updates) checks on demand; "Install" downloads the notarized package, verifies its SHA-256 and signature, replaces the app and relaunches it.
 
-## Build from source
+## Build
 
 ```bash
 swift test        # unit tests
@@ -41,3 +49,30 @@ swift test        # unit tests
 - `Sources/HdCleanerCore` — logic with no UI: scanner, safety guard, cleaner, threshold. Unit-tested.
 - `Sources/hdCLEANER` — AppKit/SwiftUI app.
 - `Resources/*.lproj`, `tools/strings_table.py` — texts in four languages (`python3 tools/gen_strings.py`).
+
+## Languages
+
+English, French, Spanish and Italian. The app follows your Mac's preferred language automatically (English if it is none of these four).
+
+## Support
+
+Bug reports and suggestions: [GitHub Issues](https://github.com/starbudweiser/hdCLEANER/issues).
+
+## License
+
+Released under the **MIT License**, © 2026 Starbudweiser. See [LICENSE](LICENSE).
+
+---
+
+## Français
+
+Nettoyeur de disque pour macOS : il analyse les emplacements habituels des fichiers inutiles, montre ce que chaque catégorie libérerait et supprime ce que vous cochez.
+
+- 19 catégories (caches, journaux, Corbeille, téléchargements, restes d'applis désinstallées, sauvegardes iPhone… et, avec le mot de passe administrateur, caches et journaux système, instantanés Time Machine locaux, langues inutilisées).
+- Onglets Applications, Maintenance, Autorisations, Fichiers cachés et Sécurité (antivirus YARA alimenté par les règles XProtect d'Apple, protection en temps réel).
+- Sûr par conception : seules les données régénérables sans mot de passe sont cochées après une analyse ; les fichiers personnels vont à la Corbeille.
+- Inspiré de *Disk Cleaner* d'AppYogi, sans lien avec ses auteurs.
+
+Installation : téléchargez la [dernière version notarisée](https://github.com/starbudweiser/hdCLEANER/releases/latest), décompressez-la et placez **hdCLEANER.app** dans Applications (macOS 14 Sonoma ou plus récent).
+
+Interface en français, anglais, espagnol et italien, choisie d'après la langue du Mac (anglais sinon). Licence MIT, © 2026 Starbudweiser. Questions et bugs : [Issues GitHub](https://github.com/starbudweiser/hdCLEANER/issues).
