@@ -218,6 +218,9 @@ final class MonitorStatus: NSObject {
             item = new
         }
         guard let button = item?.button else { return }
+        // La barre des menus suit le thème du système, pas celui de l'appli : sinon icône et texte noirs sur barre sombre.
+        let systemDark = UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
+        button.appearance = NSAppearance(named: systemDark ? .darkAqua : .aqua)
         let symbol = NSImage(systemSymbolName: "internaldrive", accessibilityDescription: nil)
         symbol?.isTemplate = !model.belowThreshold
         button.image = symbol
