@@ -266,7 +266,7 @@ final class MonitorStatus: NSObject {
 
     @objc private func showMenu(_ sender: NSStatusBarButton) {
         guard let menu else { return }
-        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.isFlipped ? sender.bounds.maxY + 4 : -4), in: sender)
+        item?.socleShow(menu)   // Socle : menu placé selon l'écran de l'icône (plusieurs écrans)
     }
 
     @objc private func openWindow() { open() }
