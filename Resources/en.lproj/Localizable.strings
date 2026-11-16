@@ -13,6 +13,7 @@
 "menu.rescan" = "Scan";
 "about.menu" = "About hdCLEANER";
 "about.version" = "Version %@ (%@)";
+"about.collection" = "Part of the DESKTOP MAC TOOLKIT";
 "about.tagline" = "Finds what clutters your disk and frees it, without touching your files unless you say so.";
 "about.authors" = "Starbudweiser & Claude Code (Anthropic)";
 "about.license" = "MIT License. © 2026 Starbudweiser.";

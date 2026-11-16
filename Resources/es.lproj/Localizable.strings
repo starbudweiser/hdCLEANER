@@ -13,6 +13,7 @@
 "menu.rescan" = "Analizar";
 "about.menu" = "Acerca de hdCLEANER";
 "about.version" = "Versión %@ (%@)";
+"about.collection" = "Forma parte del DESKTOP MAC TOOLKIT";
 "about.tagline" = "Encuentra lo que ocupa tu disco y lo libera, sin tocar tus archivos sin tu permiso.";
 "about.authors" = "Starbudweiser & Claude Code (Anthropic)";
 "about.license" = "Licencia MIT. © 2026 Starbudweiser.";

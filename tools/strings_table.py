@@ -18,6 +18,7 @@ T = [
 ("menu.rescan", "Analyser", "Scan", "Analizar", "Analizza"),
 ("about.menu", "À propos de hdCLEANER", "About hdCLEANER", "Acerca de hdCLEANER", "Informazioni su hdCLEANER"),
 ("about.version", "Version %@ (%@)", "Version %@ (%@)", "Versión %@ (%@)", "Versione %@ (%@)"),
+("about.collection", "Fait partie du DESKTOP MAC TOOLKIT", "Part of the DESKTOP MAC TOOLKIT", "Forma parte del DESKTOP MAC TOOLKIT", "Fa parte del DESKTOP MAC TOOLKIT"),
 ("about.tagline", "Retrouve ce qui encombre votre disque et le libère, sans toucher à vos fichiers sans votre accord.", "Finds what clutters your disk and frees it, without touching your files unless you say so.", "Encuentra lo que ocupa tu disco y lo libera, sin tocar tus archivos sin tu permiso.", "Trova ciò che ingombra il disco e lo libera, senza toccare i tuoi file senza il tuo consenso."),
 ("about.authors", "Starbudweiser & Claude Code (Anthropic)", "Starbudweiser & Claude Code (Anthropic)", "Starbudweiser & Claude Code (Anthropic)", "Starbudweiser & Claude Code (Anthropic)"),
 ("about.license", "Licence MIT. © 2026 Starbudweiser.", "MIT License. © 2026 Starbudweiser.", "Licencia MIT. © 2026 Starbudweiser.", "Licenza MIT. © 2026 Starbudweiser."),
