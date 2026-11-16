@@ -12,6 +12,8 @@ A macOS disk cleaner: it scans the usual places for junk, shows what each catego
 
 hdCLEANER is a personal take on AppYogi's *Disk Cleaner* — not affiliated with its authors. Made by Starbudweiser & Claude Code (Anthropic), MIT License, © 2026 Starbudweiser. Provided as is, without warranty. The app's own *About hdCLEANER* entry is in the application menu.
 
+hdCLEANER is part of the **DESKTOP MAC TOOLKIT**, Starbudweiser's collection of macOS apps.
+
 ## Features
 
 - **19 categories** with their size: app caches, app logs, browser caches (never history, cookies or passwords), developer caches (Xcode, Homebrew, npm, pip…), Trash, Downloads, Mail attachments, large files, uninstalled app leftovers (including orphaned containers and group containers), iPhone/iPad backups, iOS photo cache, Music cache, iOS updates, installer packages and macOS installers, screenshots — and, with your administrator password, **system caches**, **system logs** (archived `/var/log`, crash reports), **local Time Machine snapshots** and **unused app languages**.
