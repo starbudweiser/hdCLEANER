@@ -317,7 +317,8 @@ struct SocleField: ViewModifier {
 /// Grille de modules Socle : blocs indépendants en colonnes de même largeur (au moins `minimum`), autant que la
 /// largeur en permet, espacées de `space-4`. Agencement en maçonnerie : chaque bloc se place sous la colonne la plus
 /// courte, à sa hauteur naturelle, sans trou sous un bloc plus court que son voisin. Le module où l'on saisit, sinon
-/// celui que la souris survole, reste net ; les autres s'estompent. Chaque bloc de la grille porte `.socleModule()`.
+/// celui que la souris survole, reste net ; les autres s'estompent. Chaque bloc de la grille porte `.socleModule()`, mais
+/// SEULEMENT si Stéphan a demandé cette mise en avant pour l'appli : sans `.socleModule()`, la grille ne fait que le rangement.
 struct SocleModuleGrid<Content: View>: View {
     var minimum: CGFloat = 550  // 500 px × échelle de texte 1,1
     @ViewBuilder var content: Content
@@ -639,5 +640,16 @@ extension NSStatusItem {
             x = min(max(x, sc.frame.minX), sc.frame.maxX - menu.size.width - 4)
         }
         menu.popUp(positioning: nil, at: NSPoint(x: x, y: r.minY - 4), in: nil)
+    }
+}
+
+// MARK: Lignes de liste
+
+extension View {
+    /// Texte d'identité d'une ligne (nom d'un compte, d'un fichier, d'une appli…) : jamais sur deux lignes, prioritaire sur
+    /// les colonnes d'état et d'actions (c'est elles qui cèdent la place), tronqué en fin de ligne avec le texte complet en
+    /// infobulle. À poser sur chaque nom d'une liste ; les colonnes d'actions ont une largeur fixe, le surplus va dans un menu « … ».
+    func socleRowName(_ full: String) -> some View {
+        lineLimit(1).truncationMode(.tail).layoutPriority(1).help(full)
     }
 }
