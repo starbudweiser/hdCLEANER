@@ -12,7 +12,8 @@
 //   remplace par ditto, la remet en cas d'échec, relance ;
 // - dossier non inscriptible : droits demandés par la fenêtre système (osascript) ;
 // - SKYRIM_TOOLS_NO_UPDATE_CHECK désactive la vérification automatique (essais) ;
-// - clé Info.plist SkyrimUpdateAcceptBundleID : l'édition de test reçoit le paquet officiel.
+// - clé Info.plist SkyrimUpdateAcceptBundleID : l'édition de test reçoit le paquet officiel ;
+// - plusieurs éditions dans une release : chacune prend le zip à son nom (Updater.zipName, « HORIZONs Test » → HORIZONs-Test.zip).
 //
 // Utilisation : UpdateEngine.shared.configure(repo: "nEXUSWATCH", lang: { L.lang })  puis  UpdateEngine.shared.start() ;
 // menu « Rechercher les mises à jour… » : UpdateEngine.shared.installAppMenuItem() ou UpdateEngine.shared.checkNow().
@@ -67,8 +68,13 @@ enum Updater {
         return host == apiHost || host.hasSuffix(".githubusercontent.com")
     }
 
+    /// Nom du zip propre à une édition (« HORIZONs Test » → « HORIZONs-Test.zip ») : une release peut porter plusieurs
+    /// éditions de la même appli, chacune doit recevoir la sienne (même identifiant, mêmes données).
+    static func zipName(for appName: String) -> String { appName.replacingOccurrences(of: " ", with: "-") + ".zip" }
+
     /// Réponse de GET /releases : releases publiées (ni brouillon ni préversion) portant un zip et son .sha256.
-    static func parseReleases(_ data: Data) -> [UpdateRelease] {
+    /// `prefer` : zip de l'édition installée s'il est là, sinon le zip arm64, sinon le premier.
+    static func parseReleases(_ data: Data, prefer: String? = nil) -> [UpdateRelease] {
         guard let list = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]] else { return [] }
         var out: [UpdateRelease] = []
         for j in list {
@@ -82,7 +88,7 @@ enum Updater {
                 urls[name] = url
             }
             let zips = urls.keys.filter { $0.hasSuffix(".zip") && urls[$0 + ".sha256"] != nil }.sorted()
-            guard let zip = zips.first(where: { $0.contains("arm64") }) ?? zips.first,
+            guard let zip = zips.first(where: { $0 == prefer }) ?? zips.first(where: { $0.contains("arm64") }) ?? zips.first,
                   let zipURL = urls[zip], let shaURL = urls[zip + ".sha256"] else { continue }
             out.append(UpdateRelease(tag: tag, version: version.description, body: j["body"] as? String ?? "",
                                      zipName: zip, zipURL: zipURL, shaURL: shaURL))
@@ -511,7 +517,7 @@ final class UpdateEngine: ObservableObject {
                   let status = (response as? HTTPURLResponse)?.statusCode else { return nil }
             if status == 404, attempt == 0, await githubToken() != nil { useToken = true; continue }
             if status == 404 { return [] }
-            return status == 200 ? Updater.parseReleases(data) : nil
+            return status == 200 ? Updater.parseReleases(data, prefer: Updater.zipName(for: appName)) : nil
         }
         return nil
     }
@@ -638,7 +644,7 @@ final class UpdateEngine: ObservableObject {
 }
 
 /// Cible de l'élément de menu (NSMenuItem a besoin d'un objet Objective-C).
-final class UpdateMenuTarget: NSObject {
+@MainActor final class UpdateMenuTarget: NSObject {
     static let shared = UpdateMenuTarget()
     @MainActor @objc func fire() { UpdateEngine.shared.checkNow() }
 }
