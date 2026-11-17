@@ -62,7 +62,7 @@
 "categoryHelp.downloads" = "Yours to sort: nothing is ticked for you.";
 "categoryHelp.mailDownloads" = "Attachments Mail saved to disk. They stay in your messages.";
 "categoryHelp.largeFiles" = "Files in your home folder above the size set in Settings.";
-"categoryHelp.leftovers" = "Folders, containers and preferences named after an app that is not on this Mac. Check before ticking.";
+"categoryHelp.leftovers" = "Folders, containers, preferences, login agents and launch services of apps that are no longer on this Mac (including those whose program is gone), and their privileged helpers. System items need the administrator password. Check before ticking.";
 "categoryHelp.iosBackups" = "Full copies of a device. Remove them only if you no longer need them.";
 "categoryHelp.iosPhotoCache" = "Photos converted for syncing with an iPhone or iPad.";
 "categoryHelp.musicCache" = "Temporary files of the Music app. Your library is not touched.";
@@ -91,7 +91,7 @@
 "apps.search" = "Search for an app";
 "apps.loading" = "Reading applications…";
 "apps.select" = "Choose an app to uninstall.";
-"apps.help" = "The app and the ticked files will go to the Trash.";
+"apps.help" = "The app and the ticked files will go to the Trash; its system services are stopped first, then removed with the administrator password.";
 "apps.drop" = "Drop the app here";
 "apps.dropHint" = "App missing from the list? Drag it here.";
 "apps.dropRejected" = "Ignored: not an app that can be uninstalled.";
@@ -271,7 +271,7 @@
 "sidebar.free" = "free on %@";
 "page.overview" = "Where your disk space goes.";
 "page.clean" = "Tick what you want to free up. Nothing is deleted before you agree.";
-"page.apps" = "Uninstall an app with the files it left behind. Everything goes to the Trash.";
+"page.apps" = "Uninstall an app with the files it left behind, launch services included.";
 "page.duplicates" = "Find duplicate files. One copy of each group is always kept.";
 "page.organize" = "One subfolder per file type. No file is overwritten.";
 "page.map" = "What takes up your space, folder by folder.";

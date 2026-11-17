@@ -302,7 +302,7 @@ final class CoreTests: XCTestCase {
         XCTAssertEqual(entries.map(\.bundleID), ["com.vendor.toolpro"])
         var entry = entries[0]
         entry.size = DiskSize.bytes(of: URL(fileURLWithPath: entry.path))
-        let items = Uninstaller.items(for: entry, home: home, running: false)
+        let items = Uninstaller.items(for: entry, home: home, running: false, systemRoot: home)
         let rel = items.map { String($0.path.dropFirst(home.path.count + 1)) }
         XCTAssertEqual(rel.first, "Applications/Tool Pro.app")
         XCTAssertEqual(Set(rel.dropFirst()), ["Library/Application Support/com.vendor.toolpro", "Library/Application Support/Tool Pro", "Library/Preferences/com.vendor.toolpro.plist",

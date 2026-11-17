@@ -62,7 +62,7 @@
 "categoryHelp.downloads" = "Da riordinare tu: niente viene spuntato in automatico.";
 "categoryHelp.mailDownloads" = "Allegati salvati da Mail sul disco. Restano nei tuoi messaggi.";
 "categoryHelp.largeFiles" = "File della tua cartella Inizio sopra la dimensione scelta nelle impostazioni.";
-"categoryHelp.leftovers" = "Cartelle, contenitori e preferenze con l'identificativo di un'app assente da questo Mac. Controlla prima di spuntare.";
+"categoryHelp.leftovers" = "Cartelle, contenitori, preferenze, agenti e servizi di avvio di app assenti da questo Mac (compresi quelli il cui programma è scomparso) e i loro assistenti privilegiati. Gli elementi di sistema richiedono la password di amministratore. Controlla prima di spuntare.";
 "categoryHelp.iosBackups" = "Copie complete di un dispositivo. Rimuovile solo se non ti servono più.";
 "categoryHelp.iosPhotoCache" = "Foto convertite per la sincronizzazione con iPhone o iPad.";
 "categoryHelp.musicCache" = "File temporanei dell'app Musica. La tua libreria non viene toccata.";
@@ -91,7 +91,7 @@
 "apps.search" = "Cerca un'app";
 "apps.loading" = "Lettura delle applicazioni…";
 "apps.select" = "Scegli un'app da disinstallare.";
-"apps.help" = "L'app e i file spuntati andranno nel Cestino.";
+"apps.help" = "L'app e i file spuntati andranno nel Cestino; i suoi servizi di sistema vengono prima fermati, poi rimossi con la password di amministratore.";
 "apps.drop" = "Trascina qui l'app";
 "apps.dropHint" = "App non in elenco? Trascinala qui.";
 "apps.dropRejected" = "Ignorato: non è un'app disinstallabile.";
@@ -271,7 +271,7 @@
 "sidebar.free" = "liberi su %@";
 "page.overview" = "Dove va lo spazio del disco.";
 "page.clean" = "Selezionate ciò che volete liberare. Nulla viene eliminato senza il vostro consenso.";
-"page.apps" = "Disinstallate un'app con i file che ha lasciato. Tutto va nel Cestino.";
+"page.apps" = "Disinstallate un'app con i file che ha lasciato, servizi di avvio compresi.";
 "page.duplicates" = "Trovate i file duplicati. Una copia di ogni gruppo viene sempre conservata.";
 "page.organize" = "Una sottocartella per tipo di file. Nessun file viene sovrascritto.";
 "page.map" = "Cosa occupa lo spazio, cartella per cartella.";

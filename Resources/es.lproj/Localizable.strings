@@ -62,7 +62,7 @@
 "categoryHelp.downloads" = "Te toca ordenarlo: nada se marca solo.";
 "categoryHelp.mailDownloads" = "Adjuntos que Mail guardó en el disco. Siguen en tus mensajes.";
 "categoryHelp.largeFiles" = "Archivos de tu carpeta personal por encima del tamaño elegido en los ajustes.";
-"categoryHelp.leftovers" = "Carpetas, contenedores y preferencias con el identificador de una app ausente de este Mac. Compruébalas antes de marcarlas.";
+"categoryHelp.leftovers" = "Carpetas, contenedores, preferencias, agentes y servicios de arranque de apps ausentes de este Mac (incluidos aquellos cuyo programa ha desaparecido), y sus asistentes privilegiados. Los elementos del sistema piden la contraseña de administrador. Compruébalos antes de marcarlos.";
 "categoryHelp.iosBackups" = "Copias completas de un dispositivo. Elimínalas solo si ya no las necesitas.";
 "categoryHelp.iosPhotoCache" = "Fotos convertidas para sincronizar con un iPhone o iPad.";
 "categoryHelp.musicCache" = "Archivos temporales de la app Música. Tu biblioteca no se toca.";
@@ -91,7 +91,7 @@
 "apps.search" = "Buscar una app";
 "apps.loading" = "Leyendo aplicaciones…";
 "apps.select" = "Elige una app para desinstalar.";
-"apps.help" = "La app y los archivos marcados irán a la Papelera.";
+"apps.help" = "La app y los archivos marcados irán a la Papelera; sus servicios del sistema se detienen primero y se eliminan con la contraseña de administrador.";
 "apps.drop" = "Suelta la app aquí";
 "apps.dropHint" = "¿Una app que no aparece? Arrástrala aquí.";
 "apps.dropRejected" = "Ignorado: no es una app desinstalable.";
@@ -271,7 +271,7 @@
 "sidebar.free" = "libres en %@";
 "page.overview" = "Adónde va el espacio de su disco.";
 "page.clean" = "Marque lo que quiere liberar. No se borra nada sin su permiso.";
-"page.apps" = "Desinstale una app con los archivos que dejó. Todo va a la Papelera.";
+"page.apps" = "Desinstale una app con los archivos que dejó, servicios de arranque incluidos.";
 "page.duplicates" = "Encuentre archivos duplicados. Siempre se conserva una copia de cada grupo.";
 "page.organize" = "Una subcarpeta por tipo de archivo. No se sobrescribe ningún archivo.";
 "page.map" = "Lo que ocupa su espacio, carpeta por carpeta.";

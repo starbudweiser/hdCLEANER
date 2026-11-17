@@ -512,6 +512,7 @@ struct SocleButtonStyle: ButtonStyle {
 
         var body: some View {
             configuration.label
+                .lineLimit(1).multilineTextAlignment(.center)
                 .socle(variant == .action ? Socle.T.buttonLg : (variant == .primary ? Socle.T.buttonFlow : Socle.T.button))
                 .foregroundStyle(foreground)
                 .padding(.horizontal, Socle.M.space4)

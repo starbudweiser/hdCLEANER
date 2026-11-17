@@ -153,7 +153,7 @@ final class AppModel: ObservableObject {
         let home = home
         Task {
             let done = await Task.detached(priority: .userInitiated) {
-                Cleaner.clean(items, home: home, cancel: flag, runAdmin: AdminRunner.run) { part in
+                Cleaner.clean(items, home: home, cancel: flag, runAdmin: AdminRunner.run, unloadAgent: LaunchItems.bootoutUserAgent) { part in
                     Task { @MainActor [weak self] in
                         if case .cleaning = self?.phase { self?.phase = .cleaning(part) }
                     }
@@ -299,7 +299,7 @@ extension AppModel {
         let home = home
         Task {
             let done = await Task.detached(priority: .userInitiated) {
-                Cleaner.clean(items, home: home, runAdmin: AdminRunner.run)
+                Cleaner.clean(items, home: home, runAdmin: AdminRunner.run, unloadAgent: LaunchItems.bootoutUserAgent)
             }.value
             phase = .idle
             report = done

@@ -206,8 +206,35 @@ private struct Walk {
             for url in children(at(root), for: .leftovers) ?? [] {
                 var name = url.lastPathComponent
                 for suffix in [".plist", ".savedState", ".binarycookies"] where name.hasSuffix(suffix) { name.removeLast(suffix.count) }
-                if root.contains("Containers") || root.contains("Application Scripts") { name = Scanner.bundleName(fromContainer: name) }
+                // Conteneurs, mais aussi préférences préfixées par l'identifiant d'équipe (« S8EX82NJP6.com.macpaw.CleanMyMac5 »).
+                name = Scanner.bundleName(fromContainer: name)
                 if Scanner.isLeftover(name, context: context, vendors: vendors) { add(url, .leftovers) }
+            }
+        }
+        launchLeftovers(vendors: vendors)
+        for url in list(sys("Library/Application Support")) where Scanner.isLeftover(url.lastPathComponent, context: context, vendors: vendors) {
+            add(url, .leftovers, admin: true)
+        }
+    }
+
+    /// Agents et services de démarrage d'applis disparues, et les assistants privilégiés qui vont avec.
+    private mutating func launchLeftovers(vendors: Set<String>) {
+        for item in LaunchItem.list(in: at("Library/LaunchAgents")) where LaunchItems.isOrphan(item, context: context, vendors: vendors) {
+            add(URL(fileURLWithPath: item.plist), .leftovers)
+        }
+        let daemons = LaunchItem.list(in: sys("Library/LaunchDaemons")) + LaunchItem.list(in: sys("Library/LaunchAgents"))
+        var orphanPrograms = Set<String>()
+        for item in daemons where LaunchItems.isOrphan(item, context: context, vendors: vendors) {
+            add(URL(fileURLWithPath: item.plist), .leftovers, admin: true)
+            if let program = item.program { orphanPrograms.insert(program) }
+        }
+        let referenced = Set(daemons.compactMap(\.program))
+        for url in list(sys("Library/PrivilegedHelperTools")) {
+            let name = url.lastPathComponent
+            guard !name.hasPrefix("com.apple.") else { continue }
+            let program = LaunchItems.helperFolder + name
+            if orphanPrograms.contains(program) || (!referenced.contains(program) && Scanner.isLeftover(name, context: context, vendors: vendors)) {
+                add(url, .leftovers, admin: true)
             }
         }
     }

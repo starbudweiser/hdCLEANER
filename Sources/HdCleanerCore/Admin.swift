@@ -19,6 +19,8 @@ public enum AdminScript {
 
     public static func build(removing paths: [String], snapshots: [String]) -> String {
         var lines = ["#!/bin/sh"]
+        // Un service de démarrage est arrêté avant d'être supprimé.
+        lines += paths.compactMap(LaunchItems.bootoutCommand(for:))
         lines += paths.map { "/bin/rm -rf -- \(quote($0))" }
         lines += snapshots.filter(isSnapshotDate).map { "/usr/bin/tmutil deletelocalsnapshots \($0)" }
         lines.append("exit 0")

@@ -57,6 +57,15 @@ public enum PathGuard {
         if let rel = relative(path, to: r + "/Library/Caches") { return !rel.hasPrefix("com.apple.") }
         if let rel = relative(path, to: r + "/Library/Logs") { return !systemLogFolders.contains(rel) }
         if let rel = relative(path, to: r + "/var/log") { return !rel.contains("/") && Scanner.isRotatedLog(rel) }
+        // Restes d'applis disparues : services de démarrage, assistants privilégiés, dossiers à l'identifiant d'une appli.
+        for folder in ["/Library/LaunchDaemons", "/Library/LaunchAgents"] {
+            if let rel = relative(path, to: r + folder) { return !rel.contains("/") && rel.hasSuffix(".plist") && !rel.hasPrefix("com.apple.") }
+        }
+        if let rel = relative(path, to: r + "/Library/PrivilegedHelperTools") { return !rel.contains("/") && !rel.hasPrefix("com.apple.") }
+        if let rel = relative(path, to: r + "/Library/Application Support") {
+            let parts = rel.split(separator: ".").map(String.init)
+            return !rel.contains("/") && parts.count >= 3 && Scanner.vendorRoots.contains(parts[0]) && parts[1] != "apple"
+        }
         for apps in [r + "/Applications", home.standardizedFileURL.path + "/Applications"] {
             guard let rel = relative(path, to: apps) else { continue }
             if !rel.contains("/"), rel.hasPrefix("Install "), rel.hasSuffix(".app") { return true }
@@ -83,6 +92,7 @@ public enum Cleaner {
     public static func clean(_ items: [JunkItem], home: URL, systemRoot: URL = URL(fileURLWithPath: "/"), cancel: CancelFlag = CancelFlag(),
                              toTrash: (URL) throws -> Void = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) },
                              runAdmin: (String) -> Bool = { _ in false },
+                             unloadAgent: (String) -> Void = { _ in },
                              progress: (Double) -> Void = { _ in }) -> CleanReport {
         var report = CleanReport()
         var admin: [JunkItem] = []
@@ -96,6 +106,7 @@ public enum Cleaner {
                     report.failures.append(item.path)
                     continue
                 }
+                if item.path.hasPrefix(home.standardizedFileURL.path + "/Library/LaunchAgents/"), item.path.hasSuffix(".plist") { unloadAgent(item.path) }
                 do {
                     if item.disposal == .delete {
                         try FileManager.default.removeItem(at: item.url)

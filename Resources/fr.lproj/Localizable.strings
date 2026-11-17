@@ -62,7 +62,7 @@
 "categoryHelp.downloads" = "À trier vous-même : rien n'est coché d'office.";
 "categoryHelp.mailDownloads" = "Pièces jointes que Mail a enregistrées sur le disque. Elles restent dans vos messages.";
 "categoryHelp.largeFiles" = "Fichiers de votre dossier personnel au-dessus de la taille choisie dans les réglages.";
-"categoryHelp.leftovers" = "Dossiers, conteneurs et préférences portant l'identifiant d'une appli absente de ce Mac. Vérifiez avant de cocher.";
+"categoryHelp.leftovers" = "Dossiers, conteneurs, préférences, agents et services de démarrage d'applis absentes de ce Mac (dont ceux dont le programme a disparu), et leurs assistants privilégiés. Les éléments système demandent le mot de passe administrateur. Vérifiez avant de cocher.";
 "categoryHelp.iosBackups" = "Copies complètes d'un appareil. À supprimer seulement si vous n'en avez plus besoin.";
 "categoryHelp.iosPhotoCache" = "Photos converties pour la synchronisation avec un iPhone ou un iPad.";
 "categoryHelp.musicCache" = "Fichiers temporaires de l'appli Musique. Votre bibliothèque n'est pas touchée.";
@@ -91,7 +91,7 @@
 "apps.search" = "Rechercher une appli";
 "apps.loading" = "Lecture des applications…";
 "apps.select" = "Choisissez une appli à désinstaller.";
-"apps.help" = "L'appli et les fichiers cochés iront à la Corbeille.";
+"apps.help" = "L'appli et les fichiers cochés iront à la Corbeille ; ses services système, arrêtés d'abord, seront supprimés avec le mot de passe administrateur.";
 "apps.drop" = "Déposez l'appli ici";
 "apps.dropHint" = "Une appli absente de la liste ? Glissez-la ici.";
 "apps.dropRejected" = "Fichier ignoré : ce n'est pas une appli désinstallable.";
@@ -271,7 +271,7 @@
 "sidebar.free" = "libres sur %@";
 "page.overview" = "Où va l'espace de votre disque.";
 "page.clean" = "Cochez ce que vous voulez libérer. Rien n'est supprimé avant votre accord.";
-"page.apps" = "Désinstallez une appli avec les fichiers qu'elle a laissés. Tout part à la Corbeille.";
+"page.apps" = "Désinstallez une appli avec les fichiers qu'elle a laissés, services de démarrage compris.";
 "page.duplicates" = "Trouvez les fichiers en double. Une copie de chaque groupe est toujours conservée.";
 "page.organize" = "Un sous-dossier par type de fichier. Aucun fichier n'est écrasé.";
 "page.map" = "Ce qui occupe votre espace, dossier par dossier.";

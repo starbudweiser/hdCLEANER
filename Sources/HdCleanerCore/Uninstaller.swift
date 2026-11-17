@@ -69,6 +69,8 @@ public enum Uninstaller {
             add("Cookies/\(id).binarycookies")
             add("Logs/\(id)")
             children("Preferences") { $0.hasPrefix(id + ".") && $0.hasSuffix(".plist") }
+            // Préférences préfixées par l'identifiant d'équipe : « TEAMID1234.com.x.y.plist ».
+            children("Preferences") { $0.hasSuffix(".plist") && Scanner.bundleName(fromContainer: String($0.dropLast(".plist".count))) == id && !$0.hasPrefix(id) }
             children("Preferences/ByHost") { $0.hasPrefix(id + ".") }
             children("LaunchAgents") { $0.hasPrefix(id) && $0.hasSuffix(".plist") }
             children("Group Containers") { Scanner.bundleName(fromContainer: $0) == id || $0.hasSuffix("." + id) }
@@ -80,16 +82,46 @@ public enum Uninstaller {
         return urls
     }
 
-    /// L'appli en premier, puis ses fichiers liés, tous cochables ; tout part à la Corbeille.
-    public static func items(for app: AppEntry, home: URL, running: Bool, cancel: CancelFlag = CancelFlag()) -> [JunkItem] {
+    /// Agents et services de démarrage de l'appli (son identifiant, ses applis associées ou un programme dans son paquet),
+    /// où qu'ils soient, et les assistants privilégiés qu'ils lancent.
+    static func launchCandidates(for app: AppEntry, home: URL, systemRoot: URL) -> (user: [URL], system: [URL]) {
+        let id = app.bundleID.lowercased()
+        func belongs(_ item: LaunchItem) -> Bool {
+            let file = URL(fileURLWithPath: item.plist).lastPathComponent.lowercased()
+            if !id.isEmpty, file.hasPrefix(id) || item.label.lowercased().hasPrefix(id) || item.bundleIDs.contains(where: { $0.lowercased() == id }) { return true }
+            return item.program?.hasPrefix(app.path + "/") ?? false
+        }
+        let user = LaunchItem.list(in: home.appendingPathComponent("Library/LaunchAgents")).filter(belongs).map { URL(fileURLWithPath: $0.plist) }
+        let lib = systemRoot.appendingPathComponent("Library")
+        let daemons = (LaunchItem.list(in: lib.appendingPathComponent("LaunchDaemons")) + LaunchItem.list(in: lib.appendingPathComponent("LaunchAgents"))).filter(belongs)
+        var system = daemons.map { URL(fileURLWithPath: $0.plist) }
+        let programs = Set(daemons.compactMap(\.program))
+        for url in (try? FileManager.default.contentsOfDirectory(at: lib.appendingPathComponent("PrivilegedHelperTools"), includingPropertiesForKeys: nil)) ?? [] {
+            let name = url.lastPathComponent
+            if programs.contains(LaunchItems.helperFolder + name) || (!id.isEmpty && name.lowercased().hasPrefix(id)) { system.append(url) }
+        }
+        if !id.isEmpty { system.append(lib.appendingPathComponent("Application Support/\(app.bundleID)")) }
+        return (user, system)
+    }
+
+    /// L'appli en premier, puis ses fichiers liés, tous cochables ; ceux de l'utilisateur partent à la Corbeille,
+    /// ceux du système (services, assistants privilégiés) sont supprimés avec le mot de passe administrateur après avoir été arrêtés.
+    public static func items(for app: AppEntry, home: URL, running: Bool, systemRoot: URL = URL(fileURLWithPath: "/"), cancel: CancelFlag = CancelFlag()) -> [JunkItem] {
         var out = [JunkItem(path: app.path, size: app.size, category: .leftovers, inUse: running)]
         var seen: Set<String> = [app.path]
-        for url in candidates(bundleID: app.bundleID, name: app.name, home: home) {
+        let launch = launchCandidates(for: app, home: home, systemRoot: systemRoot)
+        for url in candidates(bundleID: app.bundleID, name: app.name, home: home) + launch.user {
             let path = url.standardizedFileURL.path
             guard !seen.contains(path), FileManager.default.fileExists(atPath: path), PathGuard.isSafe(path, home: home) else { continue }
             seen.insert(path)
             let bytes = DiskSize.bytes(of: url, cancel: cancel)
             out.append(JunkItem(path: path, size: bytes, category: .leftovers, inUse: running))
+        }
+        for url in launch.system {
+            let path = url.standardizedFileURL.path
+            guard !seen.contains(path), FileManager.default.fileExists(atPath: path), PathGuard.isSafeAdmin(path, home: home, root: systemRoot) else { continue }
+            seen.insert(path)
+            out.append(JunkItem(path: path, size: DiskSize.bytes(of: url, cancel: cancel), category: .leftovers, inUse: running, admin: true))
         }
         return out
     }

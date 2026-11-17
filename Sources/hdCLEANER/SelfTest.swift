@@ -91,7 +91,7 @@ enum SelfTest {
         let r = Scanner.scan(c)
         show(r)
         Swift.print("applis :", c.installed.count, "durée :", String(format: "%.1f s", Date().timeIntervalSince(start)))
-        for item in (r.items[.leftovers] ?? []).prefix(12) { Swift.print(" reste :", item.name, SizeFormat.text(item.size)) }
+        for item in r.items[.leftovers] ?? [] { Swift.print(" reste :", item.path.replacingOccurrences(of: view.path, with: "~"), SizeFormat.text(item.size), item.admin ? "(admin)" : "") }
     }
 
     /// Exclusion par le modèle (suite de préférences jetable, jamais celles de l'utilisateur) : la ligne disparaît, reste exclue après une nouvelle analyse et au relancement.
