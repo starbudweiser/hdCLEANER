@@ -35,49 +35,49 @@ enum Socle {
 
     enum C {
         /// Fond de la fenêtre, derrière les panneaux.
-        static let bg = dynamic(dark: (0.1176, 0.1176, 0.1176, 1), light: (0.9490, 0.9490, 0.9490, 1))
+        static let bg = dynamic(dark: (0.0745, 0.0745, 0.0863, 1), light: (0.9490, 0.9490, 0.9490, 1))
         /// Zones en creux : journaux, listes de fichiers, champs de saisie, scène d'accueil.
-        static let bgSunken = dynamic(dark: (0.0941, 0.0941, 0.0941, 1), light: (0.9216, 0.9216, 0.9216, 1))
+        static let bgSunken = dynamic(dark: (0.0471, 0.0471, 0.0549, 1), light: (0.9216, 0.9216, 0.9216, 1))
         /// Contenu encastré dans un panneau : zone de dépôt, cadre d'aperçu, encart de texte long.
-        static let bgInset = dynamic(dark: (0.1020, 0.1020, 0.1020, 1), light: (0.9686, 0.9686, 0.9686, 1))
+        static let bgInset = dynamic(dark: (0.0627, 0.0627, 0.0745, 1), light: (0.9686, 0.9686, 0.9686, 1))
         /// Panneaux de travail, cartes de groupe, corps des dialogues.
-        static let surface = dynamic(dark: (0.1333, 0.1333, 0.1333, 1), light: (1.0000, 1.0000, 1.0000, 1))
+        static let surface = dynamic(dark: (0.1098, 0.1098, 0.1216, 1), light: (1.0000, 1.0000, 1.0000, 1))
         /// Chrome qui encadre le travail : barre d'en-tête, barre latérale.
-        static let surfaceRaised = dynamic(dark: (0.1490, 0.1490, 0.1490, 1), light: (0.9804, 0.9804, 0.9804, 1))
+        static let surfaceRaised = dynamic(dark: (0.1373, 0.1373, 0.1529, 1), light: (0.9804, 0.9804, 0.9804, 1))
         /// Survol d'une ligne de liste ou d'option.
-        static let surfaceHover = dynamic(dark: (0.1725, 0.1725, 0.1725, 1), light: (0.9412, 0.9412, 0.9412, 1))
+        static let surfaceHover = dynamic(dark: (0.1725, 0.1725, 0.1922, 1), light: (0.9412, 0.9412, 0.9412, 1))
         /// Ligne sélectionnée ; le contrôle (radio, case) porte l'accent, pas la ligne.
-        static let surfaceSelected = dynamic(dark: (0.1882, 0.1882, 0.1882, 1), light: (0.9098, 0.9098, 0.9098, 1))
+        static let surfaceSelected = dynamic(dark: (0.2078, 0.2078, 0.2275, 1), light: (0.9098, 0.9098, 0.9098, 1))
         /// Aplat des boutons secondaires, sans contour.
-        static let control = dynamic(dark: (0.2000, 0.2000, 0.2000, 1), light: (0.9020, 0.9020, 0.9020, 1))
+        static let control = dynamic(dark: (0.1725, 0.1725, 0.1922, 1), light: (0.9020, 0.9020, 0.9020, 1))
         /// Survol d'un bouton secondaire.
-        static let controlHover = dynamic(dark: (0.2510, 0.2510, 0.2510, 1), light: (0.8510, 0.8510, 0.8510, 1))
+        static let controlHover = dynamic(dark: (0.2196, 0.2196, 0.2431, 1), light: (0.8510, 0.8510, 0.8510, 1))
         /// Bouton secondaire enfoncé.
-        static let controlPressed = dynamic(dark: (0.1647, 0.1647, 0.1647, 1), light: (0.8000, 0.8000, 0.8000, 1))
+        static let controlPressed = dynamic(dark: (0.1373, 0.1373, 0.1529, 1), light: (0.8000, 0.8000, 0.8000, 1))
         /// Bouton tertiaire plein et poignée de barre de défilement au survol.
-        static let controlStrong = dynamic(dark: (0.2667, 0.2667, 0.2667, 1), light: (0.8314, 0.8314, 0.8314, 1))
+        static let controlStrong = dynamic(dark: (0.2510, 0.2510, 0.2745, 1), light: (0.8314, 0.8314, 0.8314, 1))
         /// Filet de 1px autour des panneaux, de l'en-tête et des dialogues ; soulignement d'onglets.
-        static let border = dynamic(dark: (0.2000, 0.2000, 0.2000, 1), light: (0.8314, 0.8314, 0.8314, 1))
+        static let border = dynamic(dark: (0.1882, 0.1882, 0.2078, 1), light: (0.8314, 0.8314, 0.8314, 1))
         /// Tirets de la zone de dépôt au repos. Jamais en contour de bouton.
-        static let borderStrong = dynamic(dark: (0.2667, 0.2667, 0.2667, 1), light: (0.7412, 0.7412, 0.7412, 1))
+        static let borderStrong = dynamic(dark: (0.2510, 0.2510, 0.2745, 1), light: (0.7412, 0.7412, 0.7412, 1))
         /// Séparateurs à l'intérieur d'une carte.
-        static let borderSubtle = dynamic(dark: (0.1804, 0.1804, 0.1804, 1), light: (0.8980, 0.8980, 0.8980, 1))
+        static let borderSubtle = dynamic(dark: (0.1490, 0.1490, 0.1647, 1), light: (0.8980, 0.8980, 0.8980, 1))
         /// Contour des radios, cases à cocher et champs non sélectionnés. 3,2:1 sur surface (sombre), 3,5:1 sur surface (clair).
-        static let borderControl = dynamic(dark: (0.4392, 0.4392, 0.4392, 1), light: (0.5412, 0.5412, 0.5412, 1))
+        static let borderControl = dynamic(dark: (0.4784, 0.4784, 0.5098, 1), light: (0.5412, 0.5412, 0.5412, 1))
         /// Titres, libellés de boutons secondaires, option sélectionnée, sur tout fond bg-* et surface-*.
         static let textStrong = dynamic(dark: (1.0000, 1.0000, 1.0000, 1), light: (0.0667, 0.0667, 0.0667, 1))
         /// Texte courant sur tout fond bg-* et surface-*.
-        static let text = dynamic(dark: (0.8667, 0.8667, 0.8667, 1), light: (0.1333, 0.1333, 0.1333, 1))
+        static let text = dynamic(dark: (0.9608, 0.9608, 0.9686, 1), light: (0.1333, 0.1333, 0.1333, 1))
         /// Texte secondaire : sous-titres, libellés de stats, en-têtes de tableau. ≥ 6,2:1 sur tous les fonds.
-        static let textMuted = dynamic(dark: (0.6667, 0.6667, 0.6667, 1), light: (0.3333, 0.3333, 0.3333, 1))
+        static let textMuted = dynamic(dark: (0.5961, 0.5961, 0.6235, 1), light: (0.3333, 0.3333, 0.3333, 1))
         /// Méta-informations, surtitres, compteurs, indications. ≥ 4,7:1 sur tous les fonds.
-        static let textSubtle = dynamic(dark: (0.5608, 0.5608, 0.5608, 1), light: (0.4000, 0.4000, 0.4000, 1))
+        static let textSubtle = dynamic(dark: (0.5412, 0.5412, 0.5725, 1), light: (0.4000, 0.4000, 0.4000, 1))
         /// Texte d'un contrôle désactivé uniquement (exempté du contraste).
-        static let textDisabled = dynamic(dark: (0.4000, 0.4000, 0.4000, 1), light: (0.6392, 0.6392, 0.6392, 1))
+        static let textDisabled = dynamic(dark: (0.3882, 0.3882, 0.4078, 1), light: (0.6392, 0.6392, 0.6392, 1))
         /// L'accent en tant que marque : radio et case cochées, soulignement d'onglet actif, zone de dépôt survolée. 5,8:1 sur surface (sombre), 4,1:1 (clair) — jamais pour du texte.
-        static let accent = dynamic(dark: (0.0549, 0.6471, 0.9137, 1), light: (0.0078, 0.5176, 0.7804, 1))
+        static let accent = dynamic(dark: (0.0392, 0.5176, 1.0000, 1), light: (0.0078, 0.5176, 0.7804, 1))
         /// Point de radio et coche dessinés sur accent.
-        static let onAccent = dynamic(dark: (0.0314, 0.1843, 0.2863, 1), light: (1.0000, 1.0000, 1.0000, 1))
+        static let onAccent = dynamic(dark: (0.0157, 0.1020, 0.2000, 1), light: (1.0000, 1.0000, 1.0000, 1))
         /// Fond des boutons principaux (Continuer, Valider). Libellé on-accent-fill à 5,9:1.
         static let accentFill = dynamic(dark: (0.0118, 0.4118, 0.6314, 1), light: (0.0118, 0.4118, 0.6314, 1))
         /// Survol d'un bouton principal.
@@ -87,7 +87,7 @@ enum Socle {
         /// Libellé sur accent-fill et ses états.
         static let onAccentFill = dynamic(dark: (1.0000, 1.0000, 1.0000, 1), light: (1.0000, 1.0000, 1.0000, 1))
         /// L'accent en texte : chemins, liens, valeurs mises en avant. ≥ 5,4:1 sur tous les fonds.
-        static let accentText = dynamic(dark: (0.2196, 0.7412, 0.9725, 1), light: (0.0118, 0.4118, 0.6314, 1))
+        static let accentText = dynamic(dark: (0.2510, 0.6118, 1.0000, 1), light: (0.0118, 0.4118, 0.6314, 1))
         /// L'appel principal d'un écran — un seul par écran (Ouvrir, Importer, Créer). Libellé on-action.
         static let action = dynamic(dark: (0.9843, 0.7490, 0.1412, 1), light: (0.9843, 0.7490, 0.1412, 1))
         /// Survol du bouton d'action.
@@ -97,7 +97,7 @@ enum Socle {
         /// Libellé sur action et ses états. 10,4:1 sur action.
         static let onAction = dynamic(dark: (0.1020, 0.1020, 0.1020, 1), light: (0.1020, 0.1020, 0.1020, 1))
         /// Texte et chiffres de réussite, sur surface et bg-sunken. Toujours accompagné d'un mot ou d'un préfixe.
-        static let success = dynamic(dark: (0.2902, 0.8706, 0.5020, 1), light: (0.0824, 0.5020, 0.2392, 1))
+        static let success = dynamic(dark: (0.1882, 0.8196, 0.3451, 1), light: (0.0824, 0.5020, 0.2392, 1))
         /// Fond opaque d'un badge ou d'un encart de réussite.
         static let successBg = dynamic(dark: (0.0784, 0.2235, 0.1216, 1), light: (0.8627, 0.9882, 0.9059, 1))
         /// Contour d'un encart de réussite.
@@ -105,7 +105,7 @@ enum Socle {
         /// Texte dans un encart de réussite, sur success-bg.
         static let successSoft = dynamic(dark: (0.5255, 0.9373, 0.6745, 1), light: (0.0784, 0.3255, 0.1765, 1))
         /// Texte d'avertissement, sur surface et bg-sunken.
-        static let warning = dynamic(dark: (0.9843, 0.7490, 0.1412, 1), light: (0.7059, 0.3255, 0.0353, 1))
+        static let warning = dynamic(dark: (1.0000, 0.6235, 0.0392, 1), light: (0.7059, 0.3255, 0.0353, 1))
         /// Fond opaque d'un badge ou d'un encart d'avertissement.
         static let warningBg = dynamic(dark: (0.2471, 0.1647, 0.0471, 1), light: (0.9961, 0.9529, 0.7804, 1))
         /// Contour d'un encart d'avertissement.
@@ -113,7 +113,7 @@ enum Socle {
         /// Texte dans un encart d'avertissement, sur warning-bg.
         static let warningSoft = dynamic(dark: (0.9922, 0.9020, 0.5412, 1), light: (0.4706, 0.2078, 0.0588, 1))
         /// Texte d'erreur et éléments manquants, sur surface et bg-sunken.
-        static let danger = dynamic(dark: (0.9725, 0.4431, 0.4431, 1), light: (0.7255, 0.1098, 0.1098, 1))
+        static let danger = dynamic(dark: (1.0000, 0.2706, 0.2275, 1), light: (0.7255, 0.1098, 0.1098, 1))
         /// Fond opaque d'un badge ou d'un encart d'erreur.
         static let dangerBg = dynamic(dark: (0.2902, 0.1098, 0.1098, 1), light: (0.9961, 0.8863, 0.8863, 1))
         /// Contour d'un encart ou d'un dialogue d'erreur.
@@ -123,7 +123,7 @@ enum Socle {
         /// Aplat rouge atténué d'un bouton ou d'une pastille d'état « refusé » sélectionné ; texte text-strong dessus. Moins vif que danger-border.
         static let dangerFill = dynamic(dark: (0.5725, 0.2078, 0.2078, 1), light: (0.9216, 0.5647, 0.5647, 1))
         /// Contour d'un encart d'information.
-        static let infoBorder = dynamic(dark: (0.2196, 0.7412, 0.9725, 1), light: (0.0078, 0.5176, 0.7804, 1))
+        static let infoBorder = dynamic(dark: (0.2510, 0.6118, 1.0000, 1), light: (0.0078, 0.5176, 0.7804, 1))
         /// Texte dans un encart d'information (fond neutre surface-raised, sans aplat de couleur).
         static let infoSoft = dynamic(dark: (0.7294, 0.9020, 0.9922, 1), light: (0.0471, 0.2902, 0.4314, 1))
         /// Fond plein d'une bulle d'aide ou d'explication (bleu).
@@ -141,7 +141,7 @@ enum Socle {
         /// Carré sombre qui porte l'icône blanche d'une bulle.
         static let bubbleIcon = dynamic(dark: (0.1490, 0.1490, 0.1490, 1), light: (0.1490, 0.1490, 0.1490, 1))
         /// Contour de focus clavier, 2px décalé de 2px. ≥ 3:1 sur toutes les surfaces.
-        static let focusRing = dynamic(dark: (0.2196, 0.7412, 0.9725, 1), light: (0.0118, 0.4118, 0.6314, 1))
+        static let focusRing = dynamic(dark: (0.2510, 0.6118, 1.0000, 1), light: (0.0118, 0.4118, 0.6314, 1))
         /// Voile derrière un dialogue ; avec le filet border, c'est ce qui le détache (aucune ombre).
         static let scrim = dynamic(dark: (0.0000, 0.0000, 0.0000, 0.75), light: (0.0667, 0.0667, 0.0667, 0.45))
     }

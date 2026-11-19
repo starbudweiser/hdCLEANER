@@ -301,7 +301,7 @@
 "icon.dock" = "Dock";
 "icon.menuBar" = "Barra dei menu";
 "icon.both" = "Entrambi";
-"settings.exclusionsHelp" = "Questi elementi, e tutto ciò che contengono, non vengono più proposti. Usa l'icona dell'occhio barrato di una riga dell'elenco, il clic destro o «Aggiungi…».";
+"settings.exclusionsHelp" = "Questi elementi, e tutto ciò che contengono, vengono ignorati ovunque: pulizia, mappa, duplicati e cronologia. Usa l'icona dell'occhio barrato di una riga dell'elenco, il clic destro o «Aggiungi…» (ad esempio la cartella dei tuoi modelli IA).";
 "settings.exclusionsEmpty" = "Nessuna esclusione.";
 "settings.title" = "Impostazioni";
 "settings.add" = "Aggiungi…";

@@ -134,7 +134,7 @@
 "change.keep" = "Sin cambio";
 "change.on" = "Activar";
 "change.off" = "Quitar";
-"perm.flags" = "Indicadores BSD (chflags)";
+"perm.flags" = "Flags BSD (chflags)";
 "perm.flag.hidden" = "Oculto (hidden)";
 "perm.flag.locked" = "Bloqueado (uchg)";
 "perm.flag.noDump" = "Fuera de copia (nodump)";
@@ -301,7 +301,7 @@
 "icon.dock" = "Dock";
 "icon.menuBar" = "Barra de menús";
 "icon.both" = "Ambos";
-"settings.exclusionsHelp" = "Estos elementos, y todo lo que contienen, ya no se proponen. Usa el icono del ojo tachado de una fila de la lista, el clic derecho o «Añadir…».";
+"settings.exclusionsHelp" = "Estos elementos, y todo lo que contienen, se ignoran en todas partes: limpieza, mapa, duplicados y cronología. Usa el icono del ojo tachado de una fila de la lista, el clic derecho o «Añadir…» (por ejemplo la carpeta de tus modelos de IA).";
 "settings.exclusionsEmpty" = "Sin exclusiones.";
 "settings.title" = "Ajustes";
 "settings.add" = "Añadir…";

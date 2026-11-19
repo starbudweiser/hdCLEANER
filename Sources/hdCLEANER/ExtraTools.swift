@@ -8,6 +8,8 @@ import SwiftUI
 final class DuplicatesModel: ObservableObject {
     enum Phase: Equatable { case idle, scanning(Int), cleaning(Double) }
 
+    /// Chemins exclus dans les réglages (posés par AppModel).
+    var excluded: Set<String> = []
     @Published var root: URL?
     @Published var minSize: Int64 = 1_000_000
     @Published private(set) var scan: DuplicateScan?
@@ -26,10 +28,10 @@ final class DuplicatesModel: ObservableObject {
         let flag = CancelFlag()
         cancel = flag
         phase = .scanning(0)
-        let minSize = minSize
+        let minSize = minSize, excluded = excluded
         Task {
             let found = await Task.detached(priority: .userInitiated) {
-                DuplicateFinder.scan(roots: [root.path], home: home, minSize: minSize, cancel: flag) { n in Task { @MainActor in if case .scanning = self.phase { self.phase = .scanning(n) } } }
+                DuplicateFinder.scan(roots: [root.path], home: home, minSize: minSize, excluded: excluded, cancel: flag) { n in Task { @MainActor in if case .scanning = self.phase { self.phase = .scanning(n) } } }
             }.value
             phase = .idle
             guard !flag.isCancelled else { return }
@@ -86,6 +88,7 @@ final class DuplicatesModel: ObservableObject {
 @MainActor
 final class DiskMapModel: ObservableObject {
     enum Phase: Equatable { case idle, scanning(Int, Int64), trashing }
+    var excluded: Set<String> = []
 
     @Published var root: URL?
     @Published private(set) var tree: MapNode?
@@ -105,9 +108,10 @@ final class DiskMapModel: ObservableObject {
         let flag = CancelFlag()
         cancel = flag
         phase = .scanning(0, 0)
+        let excluded = excluded
         Task {
             let built = await Task.detached(priority: .userInitiated) {
-                DiskMapper.scan(root: root.path, cancel: flag) { n, bytes in Task { @MainActor in if case .scanning = self.phase { self.phase = .scanning(n, bytes) } } }
+                DiskMapper.scan(root: root.path, excluded: excluded, cancel: flag) { n, bytes in Task { @MainActor in if case .scanning = self.phase { self.phase = .scanning(n, bytes) } } }
             }.value
             phase = .idle
             guard !flag.isCancelled else { return }

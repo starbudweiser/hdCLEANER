@@ -37,13 +37,20 @@ public final class MapNode: Identifiable, @unchecked Sendable {
     }
 }
 
+/// Chemins exclus par l'utilisateur (fichier ou dossier entier).
+public enum Exclusions {
+    public static func contains(_ excluded: Set<String>, _ path: String) -> Bool {
+        !excluded.isEmpty && excluded.contains { path == $0 || path.hasPrefix($0 + "/") }
+    }
+}
+
 public enum DiskMapper {
     /// Dossiers repliés sous ce seuil (leurs enfants ne sont pas conservés) et fichiers regroupés sous ce seuil.
     public static let foldBelow: Int64 = 32_000_000 // valeur par défaut de `scan`
     public static let listFilesAbove: Int64 = 4_000_000
 
     /// Parcourt `root` une fois et construit l'arbre des tailles occupées sur le disque.
-    public static func scan(root: String, foldBelow: Int64 = DiskMapper.foldBelow, cancel: CancelFlag = CancelFlag(), progress: @escaping @Sendable (Int, Int64) -> Void = { _, _ in }) -> MapNode {
+    public static func scan(root: String, foldBelow: Int64 = DiskMapper.foldBelow, excluded: Set<String> = [], cancel: CancelFlag = CancelFlag(), progress: @escaping @Sendable (Int, Int64) -> Void = { _, _ in }) -> MapNode {
         let rootNode = MapNode(name: (root as NSString).lastPathComponent, path: root, isDirectory: true)
         var stack: [MapNode] = []
         var count = 0
@@ -58,6 +65,7 @@ public enum DiskMapper {
         TreeWalker.walk(root) { entry in
             if cancel.isCancelled { return .stop }
             close(to: entry.level)
+            if entry.level > 0, Exclusions.contains(excluded, entry.path) { return .skip } // exclu par l'utilisateur : ni compté ni listé
             count += 1
             if count % 2000 == 0 { progress(count, rootNode.size) }
             if entry.isDirectory {

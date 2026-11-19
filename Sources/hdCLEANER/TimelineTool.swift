@@ -6,6 +6,7 @@ import SwiftUI
 /// et ce qui a grossi entre deux relevés. Les relevés ne tournent que tant que l'appli tourne (fenêtre ou icône de la barre de menus).
 @MainActor
 final class TimelineModel: ObservableObject {
+    var excluded: Set<String> = []
     @Published private(set) var data: TimelineData
     @Published private(set) var running = false
     /// Durée affichée, en jours.
@@ -54,10 +55,10 @@ final class TimelineModel: ObservableObject {
         running = true
         let flag = CancelFlag()
         snapshotCancel = flag
-        let root = home.path
+        let root = home.path, excluded = excluded
         Task {
             let sizes = await Task.detached(priority: .utility) { () -> [String: Int64]? in
-                let tree = DiskMapper.scan(root: root, foldBelow: Timeline.minimumEntry, cancel: flag)
+                let tree = DiskMapper.scan(root: root, foldBelow: Timeline.minimumEntry, excluded: excluded, cancel: flag)
                 return flag.isCancelled ? nil : Timeline.flatten(tree)
             }.value
             running = false

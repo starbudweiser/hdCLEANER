@@ -301,7 +301,7 @@
 "icon.dock" = "Dock";
 "icon.menuBar" = "Menu bar";
 "icon.both" = "Both";
-"settings.exclusionsHelp" = "These items, and everything inside them, are no longer suggested. Use the crossed-out eye icon on a list row, right-click, or “Add…”.";
+"settings.exclusionsHelp" = "These items, and everything inside them, are ignored everywhere: cleaning, map, duplicates and timeline. Use the crossed-out eye icon on a list row, right-click, or “Add…” (for example your AI models folder).";
 "settings.exclusionsEmpty" = "No exclusions.";
 "settings.title" = "Settings";
 "settings.add" = "Add…";

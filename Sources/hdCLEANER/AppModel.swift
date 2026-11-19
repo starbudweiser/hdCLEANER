@@ -71,6 +71,7 @@ final class AppModel: ObservableObject {
         watcher.onRemoved = { [weak self] removed in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.invisibles.noteWatched(removed); self?.onMonitorChange?() } }
         }
+        syncExclusions()
         timeline.onAnomaly = { anomaly, cause in Notifier.fastFilling(anomaly, cause: cause) }
         security.onThreat = { name, isolated in Notifier.threat(name, isolated: isolated) }
         security.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &bag)
@@ -99,9 +100,15 @@ final class AppModel: ObservableObject {
         items.filter { $0.disposal == disposal }.reduce(0) { $0 + $1.size }
     }
 
+    private func syncExclusions() {
+        let set = Set(settings.excludedPaths)
+        duplicates.excluded = set; diskMap.excluded = set; timeline.excluded = set
+    }
+
     private func settingsChanged(_ old: AppSettings) {
         guard settings != old else { return }
         defaults.set(try? JSONEncoder().encode(settings), forKey: Self.settingsKey)
+        if settings.excludedPaths != old.excludedPaths { syncExclusions() }
         if settings.theme != old.theme { Socle.apply(socleTheme) }
         if settings.watchedFolders != old.watchedFolders { applyWatcher() }
         if settings.iconMode != old.iconMode { onIconModeChange?(); onMonitorChange?() }

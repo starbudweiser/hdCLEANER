@@ -47,7 +47,7 @@ public enum DuplicateFinder {
     public static let skippedFolders: Set<String> = [".git", ".svn", "node_modules", ".Trash", ".Trashes", ".Spotlight-V100", ".fseventsd", "System Volume Information", "$RECYCLE.BIN"]
 
     /// Cherche les doublons sous `roots`. Les paquets (.app, bibliothèques Photos…), `Library` du dossier personnel, les liens et les fichiers déjà liés entre eux (même inode) sont ignorés.
-    public static func scan(roots: [String], home: URL, minSize: Int64 = 1_000_000, cancel: CancelFlag = CancelFlag(), progress: @escaping @Sendable (Int) -> Void = { _ in }) -> DuplicateScan {
+    public static func scan(roots: [String], home: URL, minSize: Int64 = 1_000_000, excluded: Set<String> = [], cancel: CancelFlag = CancelFlag(), progress: @escaping @Sendable (Int) -> Void = { _ in }) -> DuplicateScan {
         struct Candidate { let path: String; let modified: Date }
         var bySize: [Int64: [Candidate]] = [:]
         var seen = Set<String>() // inode + volume : un même fichier relié deux fois n'est pas un doublon
@@ -57,6 +57,7 @@ public enum DuplicateFinder {
             TreeWalker.walk(root) { entry in
                 if cancel.isCancelled { return .stop }
                 let name = (entry.path as NSString).lastPathComponent
+                if Exclusions.contains(excluded, entry.path) { return .skip }
                 if entry.isDirectory {
                     if entry.level > 0, skippedFolders.contains(name) || PathGuard.packageExtensions.contains((name as NSString).pathExtension.lowercased()) || entry.path == library { return .skip }
                     return .descend
