@@ -134,7 +134,7 @@
 "change.keep" = "Sin cambio";
 "change.on" = "Activar";
 "change.off" = "Quitar";
-"perm.flags" = "Flags BSD (chflags)";
+"perm.flags" = "Indicadores BSD (chflags)";
 "perm.flag.hidden" = "Oculto (hidden)";
 "perm.flag.locked" = "Bloqueado (uchg)";
 "perm.flag.noDump" = "Fuera de copia (nodump)";
