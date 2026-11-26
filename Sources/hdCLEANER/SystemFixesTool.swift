@@ -61,7 +61,7 @@ final class SystemFixesModel: ObservableObject {
         func make(_ range: Range<Int>, _ reason: LSRegistry.Reason, _ path: (Int) -> String) -> [F] { range.map { F(path: path($0), reason: reason, bundleID: nil, version: nil, keeping: nil) } }
         d.stale += make(0..<28, .cache) { "/Users/me/Library/Caches/mSLICE-release/1.\($0)/notarized/mSLICE.app" }
         d.stale += make(0..<12, .build) { "/Users/me/Library/Developer/Xcode/DerivedData/App-abc/Build/Products/Debug/A\($0).app" }
-        d.stale += make(0..<9, .temporary) { "/private/tmp/x\($0)/T.app" }
+        d.stale += make(0..<2, .temporary) { "/private/var/folders/jw/vy3rkd292mq2nx4269xm0tl80000gn/T/tmp.4n6zScmV17/notarized/hdCLEANER\($0).app" }
         d.stale += make(0..<14, .trash) { "/Users/me/.Trash/Old\($0).app" }
         d.stale += make(0..<310, .missing) { "/Applications/Gone\($0).app" }
         d.duplicates = [F(path: "/Users/me/dev/mHUB/dist/mHUB.app", reason: .duplicate, bundleID: "m.hub", version: "1.5", keeping: "/Applications/mHUB.app"),

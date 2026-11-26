@@ -67,9 +67,18 @@ private struct StatCard: View {
             Text("\(value)").socle(Socle.T.display).monospacedDigit().foregroundStyle(Socle.C.textStrong)
             Text(label).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted).lineLimit(2).fixedSize(horizontal: false, vertical: true)
         }
-        .padding(Socle.M.space3).frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, Socle.M.space4).padding(.vertical, Socle.M.space3)
+        .frame(maxWidth: .infinity, minHeight: 78, maxHeight: 78, alignment: .topLeading)
         .background(Socle.C.surface, in: RoundedRectangle(cornerRadius: Socle.M.radius))
         .overlay(RoundedRectangle(cornerRadius: Socle.M.radius).stroke(Socle.C.border))
+    }
+}
+
+/// Quatre cartes de statistiques de même largeur et de même hauteur, quel que soit le texte.
+private struct StatGrid<Content: View>: View {
+    @ViewBuilder let content: Content
+    var body: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Socle.M.space2, alignment: .top), count: 4), spacing: Socle.M.space2) { content }
     }
 }
 
@@ -105,7 +114,7 @@ private struct FixRow<Lead: View, Trail: View>: View {
             Spacer(minLength: Socle.M.space2)
             trail
         }
-        .padding(.horizontal, Socle.M.space3).frame(minHeight: 34)
+        .padding(.horizontal, Socle.M.space4).padding(.vertical, Socle.M.space1).frame(minHeight: 38)
         .overlay(alignment: .bottom) { Rectangle().fill(Socle.C.borderSubtle).frame(height: 1) }
     }
 }
@@ -197,7 +206,7 @@ private struct ByTypePane: View {
                 }
             }
             if let a = model.typeAnalysis {
-                HStack(spacing: Socle.M.space2) {
+                StatGrid {
                     StatCard(value: a.apps.count, label: L("fix.type.stat.total", a.ext))
                     StatCard(value: a.legitCount, label: L("fix.type.stat.legit"))
                     StatCard(value: a.secondaryCount, label: L("fix.type.stat.secondary"))
@@ -291,7 +300,7 @@ private struct OpenWithPane: View {
         VStack(spacing: Socle.M.space3) {
             Note(text: L("fix.openWith.help"))
             if let d = model.diagnosis {
-                HStack(spacing: Socle.M.space2) {
+                StatGrid {
                     StatCard(value: d.missingCount, label: L("fix.stat.missing"))
                     StatCard(value: d.cacheCount, label: L("fix.stat.cache"))
                     StatCard(value: d.duplicates.count + d.devBuilds.count, label: L("fix.stat.duplicates"))
@@ -307,7 +316,7 @@ private struct OpenWithPane: View {
                                 Spacer()
                                 Text(L("fix.stale.hint", d.stale.count)).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted)
                             }
-                            .padding(.horizontal, Socle.M.space3 - 6).frame(height: 32).background(Socle.C.surfaceRaised)
+                            .padding(.horizontal, Socle.M.space4).frame(height: 32).background(Socle.C.surfaceRaised)
                             ForEach(groups(d.stale)) { g in
                                 FixRow(title: g.title, detail: g.sample, lead: CheckBox(state: state(g.paths)) { toggle(g.paths) }, trail: Tag(text: reasonLabel(g.reason), color: g.reason == .missing ? Socle.C.textMuted : Socle.C.warning))
                             }
@@ -324,7 +333,7 @@ private struct OpenWithPane: View {
                                 Spacer()
                                 Text(L("fix.dup.hint")).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted)
                             }
-                            .padding(.horizontal, Socle.M.space3 - 6).frame(height: 32).background(Socle.C.surfaceRaised)
+                            .padding(.horizontal, Socle.M.space4).frame(height: 32).background(Socle.C.surfaceRaised)
                             ForEach(Dictionary(grouping: d.duplicates, by: { $0.bundleID ?? "" }).sorted { $0.key < $1.key }, id: \.key) { id, list in
                                 let paths = list.map(\.path)
                                 let keep = list[0].keeping ?? ""
@@ -350,7 +359,7 @@ private struct OpenWithPane: View {
                                 Spacer()
                                 Text(L("fix.dev.hint")).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted)
                             }
-                            .padding(.horizontal, Socle.M.space3 - 6).frame(height: 32).background(Socle.C.surfaceRaised)
+                            .padding(.horizontal, Socle.M.space4).frame(height: 32).background(Socle.C.surfaceRaised)
                             ForEach(d.devBuilds) { f in
                                 FixRow(title: ((f.path as NSString).lastPathComponent as NSString).deletingPathExtension, detail: shortPath(f.path),
                                        lead: CheckBox(state: state([f.path])) { toggle([f.path]) }, trail: Tag(text: L("fix.reason.devBuild"), color: Socle.C.warning))
@@ -405,7 +414,7 @@ private struct ExtensionsPane: View {
     var body: some View {
         VStack(spacing: Socle.M.space3) {
             Note(text: L("fix.ext.help"))
-            HStack(spacing: Socle.M.space2) {
+            StatGrid {
                 StatCard(value: model.extensions.count, label: L("fix.ext.stat.total"))
                 StatCard(value: model.extensions.filter(\.enabled).count, label: L("fix.ext.stat.active"))
                 StatCard(value: model.extensions.filter(\.fileMissing).count, label: L("fix.ext.stat.missing"))
