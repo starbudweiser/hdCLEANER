@@ -281,9 +281,11 @@ struct PermissionsView: View {
                 }
                 HStack(spacing: Socle.M.space3) {
                     VStack(alignment: .leading, spacing: 2) {
-                        ForEach(Array(issues.enumerated()), id: \.offset) { _, issue in
-                            Text(issue.message).socle(Socle.T.meta).foregroundStyle(issue == .noTarget ? Socle.C.textMuted : Socle.C.danger).lineLimit(2)
+                        ForEach(Array(issues.prefix(3).enumerated()), id: \.offset) { _, issue in
+                            Text(issue.message).socle(Socle.T.meta).foregroundStyle(issue == .noTarget ? Socle.C.textMuted : Socle.C.danger)
+                                .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                         }
+                        if issues.count > 3 { Text("+ \(issues.count - 3)").socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted) }
                         if model.running {
                             Text(L("perm.repairing")).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted)
                         } else if model.repaired {
@@ -368,10 +370,11 @@ struct PermissionsView: View {
                 }
                 HStack(spacing: Socle.M.space3) {
                     VStack(alignment: .leading, spacing: 2) {
-                        ForEach(Array(visibleIssues.enumerated()), id: \.offset) { _, issue in
+                        ForEach(Array(visibleIssues.prefix(3).enumerated()), id: \.offset) { _, issue in
                             Text(issue.message).socle(Socle.T.meta).foregroundStyle(issue == .nothingToDo || issue == .noTarget ? Socle.C.textMuted : Socle.C.danger)
-                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                         }
+                        if visibleIssues.count > 3 { Text("+ \(visibleIssues.count - 3)").socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted) }
                         if model.previewing {
                             Text(L("perm.previewing", model.previewCount)).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted)
                         } else if let p = model.preview {

@@ -573,7 +573,7 @@
 "fix.type.whyGeneric" = "dichiara «qualsiasi file»: non è specializzata per questo tipo";
 "fix.type.isDefault" = "predefinita";
 "fix.type.loses" = "perde %ld tipi";
-"fix.type.how" = "Come funziona. macOS non permette di rimuovere un'app da un solo tipo: «Rimuovi» nasconde l'app da tutta la lista «Apri con» (la colonna a destra dice cosa perderebbe). Non viene eliminato nulla, l'app resta utilizzabile dal Finder e «Annulla» la ripristina. Le app di sistema e quella predefinita non vengono mai selezionate.";
+"fix.type.how" = "Come funziona. macOS non permette di rimuovere un'app da un solo tipo: «Rimuovi» nasconde l'app da tutta la lista «Apri con» (la colonna a destra dice cosa perderebbe). Non viene eliminato nulla, l'app resta utilizzabile dal Finder e «Annulla» la ripristina. Le app di sistema e quella predefinita non vengono mai selezionate. macOS può registrarla di nuovo quando un'app mostra la sua icona (Finder, Dock…): può ricomparire, basta ripetere la pulizia.";
 "fix.type.summary" = "%ld applicazioni verranno nascoste da «Apri con» · nessun file eliminato · il Finder viene riavviato";
 "fix.type.remove" = "Rimuovi dalla lista";
 "fix.type.empty" = "Inserisci un'estensione (ad esempio pdf) per vedere cosa propone macOS.";

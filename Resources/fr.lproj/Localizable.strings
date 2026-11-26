@@ -573,7 +573,7 @@
 "fix.type.whyGeneric" = "déclare « tout fichier » : n'est pas spécialisée pour ce type";
 "fix.type.isDefault" = "par défaut";
 "fix.type.loses" = "perd %ld types";
-"fix.type.how" = "Comment ça marche. macOS ne permet pas de retirer une application d'un seul type : « Retirer » masque l'application de toute la liste « Ouvrir avec » (la colonne de droite dit ce qu'elle perdrait). Rien n'est supprimé, l'application reste utilisable depuis le Finder, et « Annuler » la remet. Les applications système et l'application par défaut ne sont jamais cochées.";
+"fix.type.how" = "Comment ça marche. macOS ne permet pas de retirer une application d'un seul type : « Retirer » masque l'application de toute la liste « Ouvrir avec » (la colonne de droite dit ce qu'elle perdrait). Rien n'est supprimé, l'application reste utilisable depuis le Finder, et « Annuler » la remet. Les applications système et l'application par défaut ne sont jamais cochées. macOS peut la réenregistrer quand une appli affiche son icône (Finder, Dock…) : elle peut donc réapparaître, il suffit alors de relancer le nettoyage.";
 "fix.type.summary" = "%ld applications seront masquées de « Ouvrir avec » · aucun fichier supprimé · le Finder est relancé";
 "fix.type.remove" = "Retirer de la liste";
 "fix.type.empty" = "Saisissez une extension (par exemple pdf) pour voir ce que macOS propose.";

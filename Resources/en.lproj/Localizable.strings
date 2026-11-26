@@ -573,7 +573,7 @@
 "fix.type.whyGeneric" = "declares “any file”: not specialized for this type";
 "fix.type.isDefault" = "default";
 "fix.type.loses" = "loses %ld types";
-"fix.type.how" = "How it works. macOS cannot remove an application from a single type: “Remove” hides the app from the whole “Open With” list (the right column says what it would lose). Nothing is deleted, the app stays usable from the Finder, and “Undo” brings it back. System apps and the default app are never checked.";
+"fix.type.how" = "How it works. macOS cannot remove an application from a single type: “Remove” hides the app from the whole “Open With” list (the right column says what it would lose). Nothing is deleted, the app stays usable from the Finder, and “Undo” brings it back. System apps and the default app are never checked. macOS may register it again whenever an app shows its icon (Finder, Dock…): it can reappear, just run the cleanup again.";
 "fix.type.summary" = "%ld applications will be hidden from “Open With” · no file deleted · Finder is relaunched";
 "fix.type.remove" = "Remove from the list";
 "fix.type.empty" = "Enter an extension (for example pdf) to see what macOS offers.";
