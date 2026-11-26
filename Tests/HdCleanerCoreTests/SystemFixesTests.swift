@@ -132,3 +132,11 @@ final class SystemFixesTests: XCTestCase {
         XCTAssertTrue(QuarantineFix.script("/Users/me/it's.app").contains("'/Users/me/it'\\''s.app'"))
     }
 }
+
+final class MaintenanceScriptTests: XCTestCase {
+    func testRebuildLaunchServicesDoesNotUseRemovedKillOption() {
+        let script = MaintenanceTask.rebuildLaunchServices.script(uid: 501)
+        XCTAssertFalse(script.contains("-kill"))
+        XCTAssertTrue(script.contains("-gc") && script.contains("-apps system,local,user") && script.hasPrefix("/"))
+    }
+}

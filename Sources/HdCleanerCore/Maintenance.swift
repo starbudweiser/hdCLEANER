@@ -23,7 +23,7 @@ public enum MaintenanceTask: String, CaseIterable, Identifiable, Sendable {
         case .reindexSpotlight:
             "/usr/bin/mdutil -E /\n"
         case .rebuildLaunchServices:
-            "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -kill -r -domain local -domain system -domain user\necho OK\n"
+            "\(SystemTools.lsregister) -gc || exit 1\n\(SystemTools.lsregister) -f -apps system,local,user || exit 1\n/usr/bin/killall Finder 2>/dev/null\necho OK\n"
         case .periodicScripts:
             "/usr/sbin/periodic daily weekly monthly\necho OK\n"
         case .repairHomePermissions:
