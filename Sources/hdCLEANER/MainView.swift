@@ -50,6 +50,7 @@ struct MainView: View {
                     case .map: DiskMapView(model: model.diskMap)
                     case .timeline: TimelineView(model: model.timeline)
                     case .security: SecurityView(model: model.security)
+                    case .fixes: SystemFixesView(model: model.fixes)
                     case .organize: OrganizerView(model: model.organizer)
                     case .clean:
                         if model.result == nil {

@@ -8,7 +8,7 @@ extension Mode {
         (nil, [.overview]),
         ("sidebar.clean", [.clean, .apps, .duplicates, .organize]),
         ("sidebar.analyze", [.map, .timeline, .security]),
-        ("sidebar.tools", [.maintenance, .permissions, .invisibles]),
+        ("sidebar.tools", [.maintenance, .permissions, .invisibles, .fixes]),
     ]
 
     var symbol: String {
@@ -24,6 +24,7 @@ extension Mode {
         case .maintenance: "wrench.and.screwdriver"
         case .permissions: "lock.open"
         case .invisibles: "eye.slash"
+        case .fixes: "cross.case"
         }
     }
 
@@ -41,6 +42,7 @@ extension Mode {
         case .maintenance: L("page.maintenance")
         case .permissions: L("page.permissions")
         case .invisibles: L("page.invisibles")
+        case .fixes: L("page.fixes")
         }
     }
 }

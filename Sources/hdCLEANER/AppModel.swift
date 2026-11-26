@@ -3,7 +3,7 @@ import Combine
 import HdCleanerCore
 import UserNotifications
 
-enum Mode: Hashable { case overview, clean, apps, maintenance, permissions, invisibles, duplicates, map, organize, timeline, security }
+enum Mode: Hashable { case overview, clean, apps, maintenance, permissions, invisibles, duplicates, map, organize, timeline, security, fixes }
 
 enum Phase: Equatable {
     case idle
@@ -39,6 +39,7 @@ final class AppModel: ObservableObject {
     let duplicates = DuplicatesModel()
     let diskMap = DiskMapModel()
     let timeline: TimelineModel
+    let fixes: SystemFixesModel
     let security: SecurityModel
     let organizer = OrganizerModel()
     private let watcher = InvisibleWatcher()
@@ -66,6 +67,7 @@ final class AppModel: ObservableObject {
         self.home = home
         self.defaults = defaults
         timeline = TimelineModel(home: home)
+        fixes = SystemFixesModel(home: home)
         security = SecurityModel(home: home)
         settings = AppSettings.decode(defaults.data(forKey: Self.settingsKey))
         watcher.onRemoved = { [weak self] removed in

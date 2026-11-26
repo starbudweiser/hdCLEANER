@@ -18,6 +18,7 @@ enum SelfTest {
         case "repair": repair(URL(fileURLWithPath: path))
         case "maint": maint(path)
         case "exclude": exclude(URL(fileURLWithPath: path))
+        case "fixes": fixes()
         case "render": render(to: URL(fileURLWithPath: path))
         case "security": security(URL(fileURLWithPath: path))
         case "securitywatch": securityWatch(URL(fileURLWithPath: path))
@@ -92,6 +93,27 @@ enum SelfTest {
         show(r)
         Swift.print("applis :", c.installed.count, "durée :", String(format: "%.1f s", Date().timeIntervalSince(start)))
         for item in r.items[.leftovers] ?? [] { Swift.print(" reste :", item.path.replacingOccurrences(of: view.path, with: "~"), SizeFormat.text(item.size), item.admin ? "(admin)" : "") }
+    }
+
+    /// Lecture seule : diagnostic réel de la base Launch Services, des extensions et des services (rien n'est modifié).
+    private static func fixes() {
+        let p = Process(), pipe = Pipe()
+        p.executableURL = URL(fileURLWithPath: SystemTools.lsregister); p.arguments = ["-dump"]; p.standardOutput = pipe
+        try? p.run()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile(); p.waitUntilExit()
+        let paths = LSRegistry.parseDump(String(decoding: data, as: UTF8.self))
+        let d = LSRegistry.diagnose(paths: paths, context: .live(home: FileManager.default.homeDirectoryForCurrentUser))
+        Swift.print("chemins .app :", paths.count, "| absents :", d.missingCount, "| cache/temp/build/corbeille :", d.cacheCount, "| doublons :", d.duplicates.count, "| droplets :", d.droplets.count, "| cohabitations :", d.keptGroups.count)
+        for f in d.duplicates.prefix(8) { Swift.print("  doublon", f.path, "→ garde", f.keeping ?? "") }
+        for f in d.droplets.prefix(5) { Swift.print("  droplet", f.path) }
+        let q = Process(), qp = Pipe()
+        q.executableURL = URL(fileURLWithPath: "/usr/bin/pluginkit"); q.arguments = ["-mAvv"]; q.standardOutput = qp
+        try? q.run()
+        let ext = PluginKit.parse(String(decoding: qp.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)); q.waitUntilExit()
+        Swift.print("extensions :", ext.count, Dictionary(grouping: ext, by: \.kind).mapValues(\.count), "| absentes :", ext.filter(\.fileMissing).count, "| dev :", ext.filter(\.isDevelopmentCopy).count)
+        let services = ServicesPrefs.entries(status: ServicesPrefs.readStatus(), discovered: ServicesPrefs.discoverKeys(in: ["/System/Library/Services", "/Library/Services", NSHomeDirectory() + "/Library/Services"]))
+        Swift.print("services :", services.count, "| masqués :", services.filter { !$0.contextMenu }.count)
+        Swift.print("cache dir :", SystemCaches.userCacheDir(), "| icônes :", SystemCaches.size(of: SystemCaches.iconPaths(cacheDir: SystemCaches.userCacheDir())))
     }
 
     /// Exclusion par le modèle (suite de préférences jetable, jamais celles de l'utilisateur) : la ligne disparaît, reste exclue après une nouvelle analyse et au relancement.
@@ -306,6 +328,13 @@ enum SelfTest {
         save(DiskMark(on: false, animated: false), size: NSSize(width: 108, height: 108), to: dir.appendingPathComponent("diskmark-start.png"))
         _ = startConfig
         // Outils : entretien, permissions (plan rempli), fichiers invisibles (analyse du faux dossier)
+        model.fixes.seedDemo()
+        model.mode = .fixes
+        for tab in FixTab.allCases {
+            model.fixes.tab = tab
+            save(MainView().environmentObject(model), size: NSSize(width: 1180, height: 760), to: dir.appendingPathComponent("fixes-\(tab.rawValue).png"))
+        }
+        model.fixes.tab = .openWith
         model.mode = .maintenance
         save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("maintenance.png"))
         model.mode = .permissions

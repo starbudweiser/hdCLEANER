@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Maquette — Corrections système</title>
+<style>
+:root{--bg:#131316;--sunken:#0c0c0e;--inset:#101013;--surface:#1c1c1f;--raised:#232327;--hover:#2c2c31;--sel:#353539;--control:#2c2c31;--controlH:#383840;--border:#303035;--sub:#262629;--bctl:#7a7a82;--strong:#fff;--text:#f5f5f7;--muted:#9898a0;--accent:#0a84ff;--accentText:#409cff;--action:#fbbf24;--onaction:#1a1204;--ok:#30d158;--warn:#f59e0b;--danger:#ff6b6b;--brand:#a78bfa}
+:root[data-theme=light]{--bg:#f2f2f2;--sunken:#ebebeb;--inset:#f7f7f7;--surface:#fff;--raised:#fafafa;--hover:#f0f0f0;--sel:#e8e8e8;--control:#e6e6e6;--controlH:#d9d9d9;--border:#d4d4d4;--sub:#e5e5e5;--bctl:#8a8a8a;--strong:#111;--text:#222;--muted:#555;--accent:#0284c7;--accentText:#036aa1;--action:#fbbf24;--onaction:#1a1204;--ok:#157a3d;--warn:#b45309;--danger:#c0392b;--brand:#7c5cf0}
+*{box-sizing:border-box;margin:0}
+body{background:#000;color:var(--text);font:13px/1.4 -apple-system,"SF Pro Text",sans-serif;padding:16px;min-height:100vh}
+:root[data-theme=light] body{background:#c9c9c9}
+.bar{display:flex;gap:8px;align-items:center;margin-bottom:12px;color:#aaa}
+.bar button{background:var(--control);color:var(--text);border:0;border-radius:4px;height:26px;padding:0 12px;cursor:pointer;font:inherit}
+.bar button.on{background:var(--action);color:var(--onaction)}
+.win{display:flex;width:1180px;max-width:100%;height:760px;background:var(--bg);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+aside{width:200px;background:var(--raised);border-right:1px solid var(--border);padding:12px 8px;display:flex;flex-direction:column;gap:2px;flex:none}
+.brand{font-weight:700;font-size:15px;padding:4px 8px 12px;color:var(--strong)}.brand b{color:var(--brand)}
+.grp{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:12px 8px 4px}
+.it{display:flex;gap:8px;align-items:center;height:28px;padding:0 8px;border-radius:5px;color:var(--text)}
+.it.sel{background:var(--sel);color:var(--strong)}.it i{width:14px;text-align:center;color:var(--muted);font-style:normal}
+.sp{flex:1}.foot{font-size:11px;color:var(--muted);padding:8px;border-top:1px solid var(--border)}
+main{flex:1;display:flex;flex-direction:column;min-width:0}
+.head{display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--raised)}
+.head h1{font-size:20px;color:var(--strong)}.head p{color:var(--muted);margin-top:2px}.head .t{flex:1}
+.tabs{display:flex;gap:2px;padding:0 20px;border-bottom:1px solid var(--border);background:var(--raised)}
+.tab{padding:9px 12px;color:var(--muted);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+.tab.on{color:var(--strong);border-color:var(--accent)}
+.body{flex:1;overflow:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+.pane{display:none;flex-direction:column;gap:12px}.pane.on{display:flex}
+.btn{height:28px;padding:0 14px;border:0;border-radius:5px;background:var(--control);color:var(--strong);font:inherit;font-weight:500;cursor:pointer;white-space:nowrap}
+.btn.action{background:var(--action);color:var(--onaction)}.btn.sm{height:24px;padding:0 10px;font-size:12px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px}
+.stat b{display:block;font-size:22px;color:var(--strong);font-variant-numeric:tabular-nums}.stat span{color:var(--muted);font-size:12px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:6px}
+.ph{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border)}
+.ph h3{font-size:13px;color:var(--strong);flex:1}.ph small{color:var(--muted)}
+.row{display:flex;align-items:center;gap:10px;min-height:30px;padding:3px 12px;border-bottom:1px solid var(--sub)}
+.row:last-child{border:0}.row:hover{background:var(--hover)}
+.row .n{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.row .n em{display:block;font-style:normal;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.row .m{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.cb{width:16px;height:16px;border:1.5px solid var(--bctl);border-radius:3px;flex:none;display:grid;place-items:center}
+.cb.on{background:var(--accent);border-color:var(--accent)}.cb.on::after{content:"✓";color:#fff;font-size:11px;line-height:1}
+.sw{width:30px;height:18px;border-radius:9px;background:var(--control);position:relative;flex:none}.sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--bctl)}
+.sw.on{background:var(--accent)}.sw.on::after{left:14px;background:#fff}
+.badge{font-size:11px;padding:1px 7px;border-radius:9px;background:var(--sunken);color:var(--muted)}
+.badge.ok{color:var(--ok)}.badge.warn{color:var(--warn)}
+.note{color:var(--muted);font-size:12px}
+.link{color:var(--accentText);cursor:pointer}
+.drop{border:1.5px dashed var(--bctl);border-radius:8px;padding:34px;text-align:center;color:var(--muted);background:var(--inset)}
+.sum{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px}
+.sum .t{flex:1}.sum b{color:var(--strong)}
+.cap{color:#888;margin:14px 0 6px;font-size:12px}
+</style></head><body>
+<div class="bar"><span>Maquette · panneau « Corrections système » (hdCLEANER) — cliquer les onglets</span>
+<button id="b1" class="on" onclick="th('dark')">Sombre</button><button id="b2" onclick="th('light')">Clair</button></div>
+
+<div class="win">
+<aside>
+ <div class="brand"><b>hd</b>CLEANER</div>
+ <div class="it"><i>◔</i>Aperçu</div>
+ <div class="grp">Nettoyer</div>
+ <div class="it"><i>▤</i>Nettoyage</div><div class="it"><i>▣</i>Applications</div><div class="it"><i>⧉</i>Doublons</div><div class="it"><i>▦</i>Rangement</div>
+ <div class="grp">Analyser</div>
+ <div class="it"><i>◫</i>Carte</div><div class="it"><i>⌁</i>Chronologie</div><div class="it"><i>⛨</i>Sécurité</div>
+ <div class="grp">Outils</div>
+ <div class="it"><i>⚙</i>Entretien</div><div class="it"><i>⚿</i>Permissions</div><div class="it"><i>◌</i>Fichiers cachés</div>
+ <div class="it sel"><i>✚</i>Corrections système</div>
+ <div class="sp"></div>
+ <div class="it"><i>⚙</i>Réglages</div><div class="it"><i>ⓘ</i>À propos</div>
+ <div class="foot">247,3 Go libres sur Macintosh HD</div>
+</aside>
+<main>
+ <div class="head"><div class="t"><h1>Corrections système</h1><p>Répare les petits défauts de macOS : menus contextuels, vignettes, disques qui ne s'éjectent pas.</p></div></div>
+ <div class="tabs" id="tabs">
+  <div class="tab on" data-p="p1">Ouvrir avec</div><div class="tab" data-p="p2">Extensions</div><div class="tab" data-p="p3">Services</div>
+  <div class="tab" data-p="p4">Vignettes et icônes</div><div class="tab" data-p="p5">Disque occupé</div><div class="tab" data-p="p6">Quarantaine</div>
+ </div>
+ <div class="body">
+
+ <!-- 1 -->
+ <div class="pane on" id="p1">
+  <div class="note">macOS garde en mémoire des applications qui n'existent plus ou en double ; elles encombrent le menu « Ouvrir avec » du Finder. Rien n'est supprimé : les enregistrements sont seulement retirés de la base Launch Services.</div>
+  <div class="stats">
+   <div class="stat"><b>473</b><span>enregistrements périmés (app absente)</span></div>
+   <div class="stat"><b>27</b><span>dans des caches ou dossiers temporaires</span></div>
+   <div class="stat"><b>35</b><span>doublons d'identifiant</span></div>
+   <div class="stat"><b>6</b><span>applis « droplet » (tous formats)</span></div>
+  </div>
+  <div class="panel"><div class="ph"><div class="cb on"></div><h3>Applications absentes ou en cache</h3><small>500 · coché = retiré</small><button class="btn sm">Tout décocher</button></div>
+   <div class="row"><div class="cb on"></div><div class="n">mSLICE 1.0.0 … 1.13.1 (28 copies)<em>~/Library/Caches/mSLICE-release/&lt;version&gt;/notarized/mSLICE.app</em></div><span class="badge warn">cache</span></div>
+   <div class="row"><div class="cb on"></div><div class="n">Anciennes compilations Xcode (112)<em>~/Library/Developer/Xcode/DerivedData/…/Build/Products</em></div><span class="badge warn">build</span></div>
+   <div class="row"><div class="cb on"></div><div class="n">Applications dans /private/tmp (9)<em>/private/tmp/…</em></div><span class="badge warn">temporaire</span></div>
+   <div class="row"><div class="cb on"></div><div class="n">Applications de la Corbeille (14)<em>~/.Trash/…</em></div><span class="badge warn">Corbeille</span></div>
+   <div class="row"><div class="cb on"></div><div class="n">Fichiers absents du disque (310)<em>chemins qui n'existent plus</em></div><span class="badge">absent</span></div>
+  </div>
+  <div class="panel"><div class="ph"><div class="cb on"></div><h3>Doublons d'identifiant</h3><small>on garde un exemplaire : /Applications, sinon la version la plus récente</small></div>
+   <div class="row"><div class="cb on"></div><div class="n">mHUB — 3 copies<em>garde ~/Applications/Applications Personnelles/mHUB.app · retire dist/, build/, mHUB Test</em></div><span class="badge ok">garde 1.4.2</span></div>
+   <div class="row"><div class="cb on"></div><div class="n">Compressor — 2 copies<em>garde /Applications/Compressor.app · retire la sauvegarde du disque externe</em></div><span class="badge ok">garde 5.0</span></div>
+   <div class="row"><div class="cb"></div><div class="n">Python 3.11 / 3.12 / 3.13<em>versions différentes : cohabitation légitime, non touchée</em></div><span class="badge">conservé</span></div>
+  </div>
+  <div class="panel"><div class="ph"><h3>Applis « droplet » dans « Ouvrir avec »</h3><small>signées : on les masque, on ne les modifie pas</small></div>
+   <div class="row"><div class="cb on"></div><div class="n">Droplet Compressor — H.264 MP4<em>déclare tous les formats audio et vidéo</em></div><span class="badge warn">masquer</span></div>
+   <div class="row"><div class="cb on"></div><div class="n">Droplet Compressor — ProRes 422<em>déclare tous les formats audio et vidéo</em></div><span class="badge warn">masquer</span></div>
+   <div class="row"><div class="n note">Elles réapparaissent quand le Finder réaffiche leur dossier. Pour une solution durable, déplacez-les dans une archive.</div><button class="btn sm">Ranger dans une archive…</button></div>
+  </div>
+  <div class="sum"><div class="t"><b>535 enregistrements</b> seront retirés · aucun fichier supprimé · le Finder est relancé à la fin</div>
+   <span class="link">Reconstruire toute la base → Entretien</span><button class="btn">Analyser</button><button class="btn action">Nettoyer</button></div>
+ </div>
+
+ <!-- 2 -->
+ <div class="pane" id="p2">
+  <div class="note">Extensions du Finder, de Partager et des Actions rapides. Un interrupteur coupé masque l'extension sans la supprimer ; on peut la réactiver à tout moment.</div>
+  <div class="stats"><div class="stat"><b>41</b><span>extensions</span></div><div class="stat"><b>29</b><span>actives</span></div><div class="stat"><b>3</b><span>fichier absent</span></div><div class="stat"><b>1</b><span>doublon de développement</span></div></div>
+  <div class="panel"><div class="ph"><h3>Menu Partager</h3><small>12</small></div>
+   <div class="row"><div class="n">AirDrop<em>com.apple.share.AirDrop</em></div><div class="sw on"></div></div>
+   <div class="row"><div class="n">Ajouter à la liste de lecture<em>com.apple.share.System</em></div><div class="sw"></div></div>
+   <div class="row"><div class="n">mSLICE — Partager<em>fr.starbudweiser.mslice.share</em></div><div class="sw on"></div></div></div>
+  <div class="panel"><div class="ph"><h3>Extensions du Finder</h3><small>6</small></div>
+   <div class="row"><div class="n">mSLICE Finder (développement)<em>doublonne l'extension installée</em></div><span class="badge warn">doublon</span><button class="btn sm">Retirer</button></div>
+   <div class="row"><div class="n">Dropbox<em>~/Library/…/DropboxFinderExt.appex — fichier absent</em></div><span class="badge warn">absent</span><button class="btn sm">Retirer</button></div></div>
+  <div class="sum"><div class="t">Les interrupteurs agissent tout de suite et se défont d'un clic. Seules les suppressions demandent un accord.</div><button class="btn">Tout réactiver</button></div>
+ </div>
+
+ <!-- 3 -->
+ <div class="pane" id="p3">
+  <div class="note">Entrées du menu Services et du clic droit. Réglage d'origine conservé : « Rétablir » remet l'état d'avant.</div>
+  <div class="panel"><div class="ph"><h3>Services du menu contextuel</h3><small>38 · 14 masqués</small></div>
+   <div class="row"><div class="n">Ouvrir dans un nouveau terminal<em>Terminal</em></div><div class="sw on"></div></div>
+   <div class="row"><div class="n">Rechercher avec Spotlight<em>Spotlight</em></div><div class="sw on"></div></div>
+   <div class="row"><div class="n">Convertir en Hiragana<em>Texte</em></div><div class="sw"></div></div>
+   <div class="row"><div class="n">Envoyer à mSLICE<em>mSLICE</em></div><div class="sw on"></div></div></div>
+  <div class="sum"><div class="t">Le Finder est relancé pour appliquer le changement.</div><button class="btn">Rétablir le réglage d'origine</button></div>
+ </div>
+
+ <!-- 4 -->
+ <div class="pane" id="p4">
+  <div class="note">Quand des vignettes ou des icônes sont génériques, floues ou périmées. Ces caches se reconstruisent seuls ; rien n'est perdu.</div>
+  <div class="panel">
+   <div class="row"><div class="n">Cache Quick Look (vignettes)<em>qlmanage -r cache</em></div><span class="m">312 Mo</span><button class="btn sm">Vider</button></div>
+   <div class="row"><div class="n">Cache des icônes<em>icônes d'applis et de dossiers</em></div><span class="m">84 Mo</span><button class="btn sm">Vider</button></div>
+   <div class="row"><div class="n">Relancer le Finder et le Dock<em>sans fermer vos fenêtres d'applis</em></div><span class="m"></span><button class="btn sm">Relancer</button></div></div>
+ </div>
+
+ <!-- 5 -->
+ <div class="pane" id="p5">
+  <div class="note">Un volume refuse de s'éjecter ? Voici qui le tient ouvert.</div>
+  <div class="panel"><div class="ph"><h3>Volume</h3><select style="background:var(--control);color:var(--text);border:0;height:24px;border-radius:4px"><option>SSD Editing</option></select><button class="btn sm">Chercher</button></div>
+   <div class="row"><div class="n">mdworker_shared<em>PID 412 · 3 fichiers ouverts · système</em></div><span class="badge">système</span></div>
+   <div class="row"><div class="cb on"></div><div class="n">Adobe Media Encoder<em>PID 9031 · 12 fichiers ouverts</em></div><button class="btn sm">Quitter</button></div>
+   <div class="row"><div class="cb on"></div><div class="n">QuickLookUIService<em>PID 5520 · 1 fichier ouvert</em></div><button class="btn sm">Quitter</button></div></div>
+  <div class="sum"><div class="t">Les processus système ne sont jamais proposés à la fermeture.</div><button class="btn action">Quitter les processus cochés</button></div>
+ </div>
+
+ <!-- 6 -->
+ <div class="pane" id="p6">
+  <div class="note">Une application refuse de s'ouvrir (« développeur non identifié ») ? Glissez-la ici pour lever la quarantaine. Seulement pour une application dont vous connaissez la source.</div>
+  <div class="drop">Glissez une application ici</div>
+  <div class="panel"><div class="row"><div class="n">Exemple.app<em>~/Téléchargements · quarantaine : Safari, 12 nov. 2026</em></div><button class="btn sm">Lever la quarantaine</button></div></div>
+ </div>
+
+ <div class="panel" style="margin-top:auto"><div class="row"><div class="n note">Éléments de connexion et agents orphelins : voir « Restes d'applis » dans Nettoyage.</div><span class="link">Ouvrir Nettoyage →</span></div></div>
+ </div>
+</main></div>
+<script>
+function th(t){document.documentElement.dataset.theme=t;b1.className=t=='dark'?'on':'';b2.className=t=='light'?'on':''}
+document.querySelectorAll('.tab').forEach(e=>e.onclick=()=>{document.querySelectorAll('.tab,.pane').forEach(x=>x.classList.remove('on'));e.classList.add('on');document.getElementById(e.dataset.p).classList.add('on')})
+</script></body></html>
