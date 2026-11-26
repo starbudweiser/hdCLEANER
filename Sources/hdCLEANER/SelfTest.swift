@@ -1,5 +1,6 @@
 #if HDCLEANER_SELFTEST
 import AppKit
+import UniformTypeIdentifiers
 import HdCleanerCore
 import SwiftUI
 
@@ -114,6 +115,12 @@ enum SelfTest {
         Swift.print("extensions :", ext.count, Dictionary(grouping: ext, by: \.kind).mapValues(\.count), "| absentes :", ext.filter(\.fileMissing).count, "| dev :", ext.filter(\.isDevelopmentCopy).count)
         let services = ServicesPrefs.entries(status: ServicesPrefs.readStatus(), discovered: ServicesPrefs.discoverKeys(in: ["/System/Library/Services", "/Library/Services", NSHomeDirectory() + "/Library/Services"]))
         Swift.print("services :", services.count, "| masqués :", services.filter { !$0.contextMenu }.count)
+        if let t = UTType(filenameExtension: "pdf") {
+            let apps = NSWorkspace.shared.urlsForApplications(toOpen: t).map(\.path)
+            let a = FileAssociations.analyze(ext: "pdf", appPaths: apps, defaultPath: NSWorkspace.shared.urlForApplication(toOpen: t)?.path)
+            Swift.print("pdf : proposées", apps.count, "| analysées", a?.apps.count ?? 0, "| légitimes", a?.legitCount ?? 0, "| secondaires", a?.secondaryCount ?? 0, "| génériques", a?.genericCount ?? 0)
+            for e in (a?.apps ?? []) where e.strength != .legit { Swift.print("  ", e.strength.rawValue, e.name, e.isSystem ? "(système)" : "", "types:", e.typeCount, e.preselected ? "[coché]" : "") }
+        }
         Swift.print("cache dir :", SystemCaches.userCacheDir(), "| icônes :", SystemCaches.size(of: SystemCaches.iconPaths(cacheDir: SystemCaches.userCacheDir())))
     }
 
@@ -336,6 +343,9 @@ enum SelfTest {
             save(MainView().environmentObject(model), size: NSSize(width: 1180, height: 760), to: dir.appendingPathComponent("fixes-\(tab.rawValue).png"))
         }
         model.fixes.tab = .openWith
+        model.fixes.openView = .byType
+        save(MainView().environmentObject(model), size: NSSize(width: 1180, height: 900), to: dir.appendingPathComponent("fixes-bytype.png"))
+        model.fixes.openView = .junk
         model.mode = .maintenance
         save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("maintenance.png"))
         model.mode = .permissions

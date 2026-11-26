@@ -13,7 +13,7 @@ struct SystemFixesView: View {
             ScrollView {
                 VStack(spacing: Socle.M.space3) {
                     switch model.tab {
-                    case .openWith: OpenWithPane(model: model)
+                    case .openWith: OpenWithHost(model: model)
                     case .extensions: ExtensionsPane(model: model)
                     case .services: ServicesPane(model: model)
                     case .caches: CachesPane(model: model)
@@ -126,7 +126,118 @@ private struct SummaryBar<Actions: View>: View {
 
 private func shortPath(_ p: String) -> String { p.replacingOccurrences(of: NSHomeDirectory(), with: "~") }
 
-// MARK: 1 · Ouvrir avec
+// MARK: 1 · Ouvrir avec (deux vues : déchets de la base, par type de fichier)
+
+private struct OpenWithHost: View {
+    @ObservedObject var model: SystemFixesModel
+    var body: some View {
+        VStack(spacing: Socle.M.space3) {
+            HStack {
+                SocleSegmented(options: SystemFixesModel.OpenView.allCases, selection: model.openView, label: { $0.title }, onSelect: { model.openView = $0 })
+                Spacer()
+            }
+            switch model.openView {
+            case .junk: OpenWithPane(model: model)
+            case .byType: ByTypePane(model: model)
+            }
+        }
+    }
+}
+
+private struct ByTypePane: View {
+    @ObservedObject var model: SystemFixesModel
+    private let common = ["pdf", "mp4", "png", "txt", "zip"]
+
+    private func state(_ paths: [String]) -> CheckBox.State {
+        let n = paths.filter { model.typeSelection.contains($0) }.count
+        return n == 0 ? .off : (n == paths.count ? .on : .mixed)
+    }
+    private func toggle(_ path: String) { if model.typeSelection.contains(path) { model.typeSelection.remove(path) } else { model.typeSelection.insert(path) } }
+    private func tag(_ a: FileAssociations.AppEntry) -> (String, Color) {
+        if a.isSystem { return (L("fix.type.system"), Socle.C.success) }
+        switch a.strength {
+        case .legit: return (L("fix.type.legit"), Socle.C.success)
+        case .secondary: return (a.isDevBuild ? L("fix.reason.devBuild") : L("fix.type.secondary"), Socle.C.warning)
+        case .generic: return (L("fix.type.generic"), Socle.C.warning)
+        }
+    }
+    private func why(_ a: FileAssociations.AppEntry) -> String {
+        var parts: [String] = []
+        switch a.strength {
+        case .legit: parts.append(L("fix.type.whyLegit", a.role.isEmpty ? "—" : a.role))
+        case .secondary: parts.append(L("fix.type.whySecondary"))
+        case .generic: parts.append(L("fix.type.whyGeneric"))
+        }
+        if a.isDefault { parts.append(L("fix.type.isDefault")) }
+        return parts.joined(separator: " · ")
+    }
+
+    var body: some View {
+        VStack(spacing: Socle.M.space3) {
+            Note(text: L("fix.type.help"))
+            Panel {
+                VStack(spacing: 0) {
+                    HStack(spacing: Socle.M.space2) {
+                        Text(L("fix.type.field")).socle(Socle.T.labelStrong).foregroundStyle(Socle.C.textStrong)
+                        TextField("pdf", text: $model.typeInput).textFieldStyle(.roundedBorder).frame(width: 110).onSubmit { model.analyzeType() }
+                        Button(L("fix.analyze")) { model.analyzeType() }.buttonStyle(SocleButtonStyle(.secondary, height: 24)).fixedSize().disabled(model.busy)
+                        if let a = model.typeAnalysis { Tag(text: "\(a.typeName) · \(a.typeID)") }
+                        Spacer()
+                        ForEach(common, id: \.self) { e in Button(".\(e)") { model.analyzeType(e) }.buttonStyle(SocleButtonStyle(.tertiary, height: 24)).fixedSize() }
+                        Button(L("fix.type.chooseFile")) { model.chooseFileForType() }.buttonStyle(SocleButtonStyle(.secondary, height: 24)).fixedSize()
+                    }
+                    .padding(.horizontal, Socle.M.space3).frame(height: 40).background(Socle.C.surfaceRaised)
+                    if let a = model.typeAnalysis {
+                        FixRow(title: L("fix.type.defaultApp"), detail: L("fix.type.defaultHelp", a.ext), lead: Color.clear.frame(width: 0, height: 0),
+                               trail: HStack(spacing: Socle.M.space3) {
+                                   Text(model.typeDefault.map { (($0 as NSString).lastPathComponent as NSString).deletingPathExtension } ?? "—").socle(Socle.T.labelStrong).foregroundStyle(Socle.C.textStrong)
+                                   Button(L("fix.type.change")) { model.chooseDefault() }.buttonStyle(SocleButtonStyle(.secondary, height: 24)).fixedSize()
+                               })
+                    }
+                }
+            }
+            if let a = model.typeAnalysis {
+                HStack(spacing: Socle.M.space2) {
+                    StatCard(value: a.apps.count, label: L("fix.type.stat.total", a.ext))
+                    StatCard(value: a.legitCount, label: L("fix.type.stat.legit"))
+                    StatCard(value: a.secondaryCount, label: L("fix.type.stat.secondary"))
+                    StatCard(value: a.genericCount, label: L("fix.type.stat.generic"))
+                }
+                Panel {
+                    VStack(spacing: 0) {
+                        HStack(spacing: Socle.M.space2) {
+                            Text(L("fix.type.listTitle", a.ext)).socle(Socle.T.labelStrong).foregroundStyle(Socle.C.textStrong)
+                            Spacer()
+                            Text(L("fix.type.listHint")).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted)
+                            Button(L("fix.type.uncheckAll")) { model.typeSelection = [] }.buttonStyle(SocleButtonStyle(.tertiary, height: 24)).fixedSize()
+                        }
+                        .padding(.horizontal, Socle.M.space3).frame(height: 32).background(Socle.C.surfaceRaised)
+                        ForEach(a.apps) { app in
+                            let t = tag(app)
+                            FixRow(title: app.name, detail: why(app),
+                                   lead: app.removable ? AnyView(CheckBox(state: state([app.path])) { toggle(app.path) }) : AnyView(Color.clear.frame(width: 28, height: 28)),
+                                   trail: HStack(spacing: Socle.M.space3) {
+                                       Tag(text: t.0, color: t.1)
+                                       Text(app.removable && app.typeCount > 1 ? L("fix.type.loses", app.typeCount) : "").socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted).frame(minWidth: 90, alignment: .trailing)
+                                   })
+                        }
+                    }
+                }
+                Panel { Note(text: L("fix.type.how")).padding(Socle.M.space3) }
+                let n = a.apps.filter { $0.removable && model.typeSelection.contains($0.path) }.count
+                SummaryBar(text: n == 0 ? L("fix.openWith.none") : L("fix.type.summary", n)) {
+                    if !model.undoPaths.isEmpty { Button(L("fix.openWith.undo")) { model.undoOpenWith() }.buttonStyle(SocleButtonStyle(.secondary)).disabled(model.busy) }
+                    Button(L("fix.type.remove")) { model.removeTypeSelection() }.buttonStyle(SocleButtonStyle(.action)).disabled(model.busy || n == 0)
+                }
+            } else {
+                Panel { Text(model.busy ? L("fix.analyzing") : L("fix.type.empty")).socle(Socle.T.body).foregroundStyle(Socle.C.textMuted).frame(maxWidth: .infinity, minHeight: 120) }
+            }
+        }
+        .onAppear { if model.typeAnalysis == nil { model.analyzeType() } }
+    }
+}
+
+// MARK: Déchets de la base Launch Services
 
 private struct StaleGroup: Identifiable {
     let id: String, title: String, sample: String, reason: LSRegistry.Reason, paths: [String]

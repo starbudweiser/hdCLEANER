@@ -72,12 +72,13 @@ main{flex:1;display:flex;flex-direction:column;min-width:0}
  <div class="head"><div class="t"><h1>Corrections système</h1><p>Répare les petits défauts de macOS : menus contextuels, vignettes, disques qui ne s'éjectent pas.</p></div></div>
  <div class="tabs" id="tabs">
   <div class="tab on" data-p="p1">Ouvrir avec</div><div class="tab" data-p="p2">Extensions</div><div class="tab" data-p="p3">Services</div>
-  <div class="tab" data-p="p4">Vignettes et icônes</div><div class="tab" data-p="p5">Disque occupé</div><div class="tab" data-p="p6">Quarantaine</div><div class="tab" data-p="p7">Associations</div>
+  <div class="tab" data-p="p4">Vignettes et icônes</div><div class="tab" data-p="p5">Disque occupé</div><div class="tab" data-p="p6">Quarantaine</div>
  </div>
  <div class="body">
 
  <!-- 1 -->
- <div class="pane on" id="p1">
+<div class="pane on" id="p1">
+  <div style="display:flex;gap:2px;margin-bottom:4px"><button class="btn sm action" onclick="go('p1')">Déchets de la base</button><button class="btn sm " onclick="go('p7')">Par type de fichier</button></div>
   <div class="note">macOS garde en mémoire des applications qui n'existent plus ou en double ; elles encombrent le menu « Ouvrir avec » du Finder. Rien n'est supprimé : les enregistrements sont seulement retirés de la base Launch Services.</div>
   <div class="stats">
    <div class="stat"><b>473</b><span>enregistrements périmés (app absente)</span></div>
@@ -159,7 +160,8 @@ main{flex:1;display:flex;flex-direction:column;min-width:0}
 
 
  <!-- 7 -->
- <div class="pane" id="p7">
+<div class="pane" id="p7">
+  <div style="display:flex;gap:2px;margin-bottom:4px"><button class="btn sm " onclick="go('p1')">Déchets de la base</button><button class="btn sm action" onclick="go('p7')">Par type de fichier</button></div>
   <div class="note">Pour un type de fichier, voyez quelles applications macOS propose dans « Ouvrir avec » et retirez celles qui n'ont rien à y faire. Chaque ligne dit <b>pourquoi</b> l'application s'y trouve.</div>
   <div class="panel"><div class="ph"><h3>Type de fichier</h3>
     <input value=".pdf" style="background:var(--sunken);color:var(--text);border:1px solid var(--border);border-radius:4px;height:24px;width:110px;padding:0 8px;font:inherit">
@@ -192,6 +194,7 @@ main{flex:1;display:flex;flex-direction:column;min-width:0}
  </div>
 </main></div>
 <script>
+function go(id){document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));document.getElementById(id).classList.add('on');document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.dataset.p=='p1'))}
 function th(t){document.documentElement.dataset.theme=t;b1.className=t=='dark'?'on':'';b2.className=t=='light'?'on':''}
 document.querySelectorAll('.tab').forEach(e=>e.onclick=()=>{document.querySelectorAll('.tab,.pane').forEach(x=>x.classList.remove('on'));e.classList.add('on');document.getElementById(e.dataset.p).classList.add('on')})
 </script></body></html>

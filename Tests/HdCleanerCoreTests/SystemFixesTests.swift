@@ -149,3 +149,36 @@ final class MaintenanceScriptTests: XCTestCase {
         XCTAssertTrue(script.contains("-gc") && script.contains("-apps system,local,user") && script.hasPrefix("/"))
     }
 }
+
+final class FileAssociationsTests: XCTestCase {
+    private func plist(types: [[String: Any]]) -> [String: Any] { ["CFBundleDocumentTypes": types, "CFBundleIdentifier": "x.app"] }
+
+    func testExactSecondaryAndGeneric() {
+        let supers: Set<String> = ["public.data", "public.item", "public.content", "public.composite-content"]
+        let editor = plist(types: [["CFBundleTypeExtensions": ["pdf"], "CFBundleTypeRole": "Editor", "LSHandlerRank": "Default"]])
+        let viewerAlt = plist(types: [["CFBundleTypeExtensions": ["psd", "pdf", "ai"], "CFBundleTypeRole": "Viewer", "LSHandlerRank": "Alternate"]])
+        let generic = plist(types: [["LSItemContentTypes": ["public.data"], "CFBundleTypeRole": "Viewer", "LSHandlerRank": "Alternate"]])
+        let unrelated = plist(types: [["CFBundleTypeExtensions": ["mp3"], "CFBundleTypeRole": "Viewer"]])
+        XCTAssertEqual(FileAssociations.classify(plist: editor, ext: "pdf", typeID: "com.adobe.pdf", supertypes: supers)?.strength, .legit)
+        let alt = FileAssociations.classify(plist: viewerAlt, ext: "pdf", typeID: "com.adobe.pdf", supertypes: supers)
+        XCTAssertEqual(alt?.strength, .secondary); XCTAssertEqual(alt?.typeCount, 3)
+        XCTAssertEqual(FileAssociations.classify(plist: generic, ext: "pdf", typeID: "com.adobe.pdf", supertypes: supers)?.strength, .generic)
+        XCTAssertNil(FileAssociations.classify(plist: unrelated, ext: "pdf", typeID: "com.adobe.pdf", supertypes: supers))
+    }
+
+    func testAnalyzePreselectsOnlyNonSystemNonDefaultSecondary() {
+        let docs: [String: [String: Any]] = [
+            "/Applications/mPDF.app": ["CFBundleIdentifier": "fr.s.mpdf", "CFBundleDocumentTypes": [["CFBundleTypeExtensions": ["pdf"], "CFBundleTypeRole": "Editor"]]],
+            "/Applications/mFONTS.app": ["CFBundleIdentifier": "fr.s.mfonts", "CFBundleDocumentTypes": [["CFBundleTypeExtensions": ["pdf", "psd"], "CFBundleTypeRole": "Viewer", "LSHandlerRank": "Alternate"]]],
+            "/System/Applications/Preview.app": ["CFBundleIdentifier": "com.apple.Preview", "CFBundleDocumentTypes": [["CFBundleTypeExtensions": ["pdf"], "CFBundleTypeRole": "Viewer", "LSHandlerRank": "Alternate"]]],
+            "/Volumes/D/mFONTS dev.app": ["CFBundleIdentifier": "fr.s.mfonts.dev", "CFBundleDocumentTypes": [["CFBundleTypeExtensions": ["pdf"], "CFBundleTypeRole": "Viewer", "LSHandlerRank": "Alternate"]]],
+        ]
+        let a = FileAssociations.analyze(ext: ".PDF", appPaths: Array(docs.keys), defaultPath: "/Applications/mPDF.app", read: { docs[$0] })
+        XCTAssertEqual(a?.ext, "pdf")
+        XCTAssertEqual(Set(a!.apps.filter(\.preselected).map(\.name)), ["mFONTS", "mFONTS dev"])
+        XCTAssertFalse(a!.apps.first { $0.name == "Preview" }!.removable)
+        XCTAssertFalse(a!.apps.first { $0.name == "mPDF" }!.removable)
+        XCTAssertEqual(a!.apps.first?.name, "mPDF") // l'appli par défaut en tête
+        XCTAssertNil(FileAssociations.analyze(ext: "a b", appPaths: [], defaultPath: nil))
+    }
+}

@@ -480,3 +480,83 @@ public enum QuarantineFix {
         "#!/bin/sh\n/usr/bin/xattr -dr \(attribute) \(AdminScript.quote(path))\n"
     }
 }
+
+// MARK: - Associations type de fichier ↔ applications
+
+import UniformTypeIdentifiers
+
+public enum FileAssociations {
+    public enum Strength: String, Sendable { case legit, secondary, generic }
+
+    public struct AppEntry: Identifiable, Hashable, Sendable {
+        public var id: String { path }
+        public let path: String
+        public let name: String
+        public let bundleID: String
+        public let strength: Strength
+        public let isDefault: Bool
+        public let isSystem: Bool
+        public let isDevBuild: Bool
+        /// Nombre de types déclarés par l'appli : ce qu'elle perd en étant masquée.
+        public let typeCount: Int
+        public let role: String
+        public init(path: String, name: String, bundleID: String, strength: Strength, isDefault: Bool, isSystem: Bool, isDevBuild: Bool, typeCount: Int, role: String) {
+            self.path = path; self.name = name; self.bundleID = bundleID; self.strength = strength; self.isDefault = isDefault; self.isSystem = isSystem; self.isDevBuild = isDevBuild; self.typeCount = typeCount; self.role = role
+        }
+        /// Retirable : jamais le système, jamais l'appli par défaut.
+        public var removable: Bool { !isSystem && !isDefault }
+        /// Cochée d'office : ce qui n'est pas un vrai éditeur du type, ni le système, ni l'appli par défaut.
+        public var preselected: Bool { removable && (strength != .legit || isDevBuild) }
+    }
+
+    public struct Analysis: Sendable {
+        public let ext: String
+        public let typeID: String
+        public let typeName: String
+        public var apps: [AppEntry]
+        public init(ext: String, typeID: String, typeName: String, apps: [AppEntry]) { self.ext = ext; self.typeID = typeID; self.typeName = typeName; self.apps = apps }
+        public var legitCount: Int { apps.filter { $0.strength == .legit }.count }
+        public var secondaryCount: Int { apps.filter { $0.strength == .secondary }.count }
+        public var genericCount: Int { apps.filter { $0.strength == .generic }.count }
+    }
+
+    static let genericTypes: Set<String> = ["public.data", "public.item", "public.content", "public.composite-content"]
+
+    /// Relation d'une appli (son `Info.plist`) avec un type : nil si elle n'en déclare rien.
+    public static func classify(plist: [String: Any], ext: String, typeID: String, supertypes: Set<String>) -> (strength: Strength, role: String, typeCount: Int)? {
+        let docs = (plist["CFBundleDocumentTypes"] as? [[String: Any]]) ?? []
+        var best: (rank: Int, strength: Strength, role: String)?
+        var total = 0
+        for d in docs {
+            let ids = (d["LSItemContentTypes"] as? [String]) ?? [], exts = ((d["CFBundleTypeExtensions"] as? [String]) ?? []).map { $0.lowercased() }
+            total += ids.count + exts.count
+            let role = (d["CFBundleTypeRole"] as? String) ?? "", rank = (d["LSHandlerRank"] as? String) ?? "Default"
+            let strongRank = rank == "Owner" || rank == "Default" || role == "Editor"
+            var candidate: (Int, Strength)?
+            if ids.contains(typeID) || exts.contains(ext.lowercased()) { candidate = (strongRank ? 4 : 3, strongRank ? .legit : .secondary) }
+            else if ids.contains(where: { supertypes.contains($0) && !genericTypes.contains($0) }) { candidate = (strongRank ? 2 : 1, strongRank ? .legit : .secondary) }
+            else if exts.contains("*") || ids.contains(where: { genericTypes.contains($0) && supertypes.contains($0) }) { candidate = (0, .generic) }
+            if let c = candidate, best == nil || c.0 > best!.rank { best = (c.0, c.1, role) }
+        }
+        guard let b = best else { return nil }
+        return (b.strength, b.role, total)
+    }
+
+    public static func analyze(ext rawExt: String, appPaths: [String], defaultPath: String?, read: (String) -> [String: Any]? = { path in
+        FileManager.default.contents(atPath: path + "/Contents/Info.plist").flatMap { try? PropertyListSerialization.propertyList(from: $0, format: nil) as? [String: Any] } }) -> Analysis? {
+        let ext = rawExt.trimmingCharacters(in: CharacterSet(charactersIn: ". ")).lowercased()
+        guard !ext.isEmpty, ext.range(of: #"^[a-z0-9_\-+]+$"#, options: .regularExpression) != nil, let type = UTType(filenameExtension: ext) else { return nil }
+        let supers = Set(type.supertypes.map(\.identifier))
+        var apps: [AppEntry] = []
+        for path in appPaths {
+            guard let plist = read(path), let rel = classify(plist: plist, ext: ext, typeID: type.identifier, supertypes: supers) else { continue }
+            let id = (plist["CFBundleIdentifier"] as? String) ?? ""
+            let name = ((path as NSString).lastPathComponent as NSString).deletingPathExtension
+            let system = path.hasPrefix("/System/") || id.hasPrefix("com.apple.")
+            apps.append(AppEntry(path: path, name: name, bundleID: id, strength: rel.strength, isDefault: path == defaultPath, isSystem: system,
+                                 isDevBuild: LSRegistry.devBase(of: id) != nil, typeCount: rel.typeCount, role: rel.role))
+        }
+        apps.sort { ($0.isDefault ? 0 : 1, $0.strength == .legit ? 0 : 1, $0.name.lowercased()) < ($1.isDefault ? 0 : 1, $1.strength == .legit ? 0 : 1, $1.name.lowercased()) }
+        return Analysis(ext: ext, typeID: type.identifier, typeName: type.localizedDescription ?? ext, apps: apps)
+    }
+}

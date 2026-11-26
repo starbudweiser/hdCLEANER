@@ -1,6 +1,7 @@
 import AppKit
 import HdCleanerCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 // Corrections système : modèle. Chaque correction montre d'abord ce qu'elle va changer, n'agit qu'après un clic, et passe par un garde-fou du cœur.
 
@@ -20,6 +21,13 @@ final class SystemFixesModel: ObservableObject {
     @Published private(set) var diagnosis: LSRegistry.Diagnosis?
     @Published var selection = Set<String>()
     @Published private(set) var undoPaths: [String] = []
+    // Ouvrir avec — vue « par type de fichier »
+    enum OpenView: String, CaseIterable, Identifiable { case junk, byType; var id: String { rawValue }; var title: String { L("fix.view.\(rawValue)") } }
+    @Published var openView: OpenView = .junk
+    @Published var typeInput = "pdf"
+    @Published private(set) var typeAnalysis: FileAssociations.Analysis?
+    @Published var typeSelection = Set<String>()
+    @Published private(set) var typeDefault: String?
     // Extensions
     @Published private(set) var extensions: [SystemExtension] = []
     // Services
@@ -72,6 +80,13 @@ final class SystemFixesModel: ObservableObject {
                       ext("m.slice.finder", "mSLICE Finder (dev)", "/Users/me/DerivedData/Ex.appex", .finder, " "), ext("com.dropbox.ext", "Dropbox", "/Users/me/Gone/D.appex", .finder, "+")]
         services = [ServiceEntry(key: "com.apple.Terminal - New Terminal at Folder - n", title: "Ouvrir dans un nouveau terminal", owner: "com.apple.Terminal", contextMenu: true, servicesMenu: true),
                     ServiceEntry(key: "(null) - Convertir en Hiragana - c", title: "Convertir en Hiragana", owner: "", contextMenu: false, servicesMenu: true)]
+        func app(_ n: String, _ st: FileAssociations.Strength, def: Bool = false, sys: Bool = false, dev: Bool = false, n2: Int) -> FileAssociations.AppEntry {
+            FileAssociations.AppEntry(path: "/Applications/\(n).app", name: n, bundleID: "x." + n, strength: st, isDefault: def, isSystem: sys, isDevBuild: dev, typeCount: n2, role: "Viewer")
+        }
+        typeAnalysis = FileAssociations.Analysis(ext: "pdf", typeID: "com.adobe.pdf", typeName: "PDF", apps: [app("mPDF", .legit, def: true, n2: 1), app("Adobe Acrobat", .legit, n2: 2), app("Aperçu", .legit, sys: true, n2: 40),
+            app("mFONTS", .secondary, n2: 19), app("mFONTS dev", .secondary, dev: true, n2: 19), app("BoltAI", .generic, n2: 1), app("Brave Browser", .generic, n2: 6)])
+        typeDefault = "/Applications/mPDF.app"
+        typeSelection = Set(typeAnalysis!.apps.filter(\.preselected).map(\.path))
         quickLookSize = 312_000_000; iconSize = 84_000_000
         volumes = ["/Volumes/SSD Editing"]; volume = volumes[0]
         holders = [OpenProcess(pid: 412, command: "mdworker_shared", uid: 0, fileCount: 3, sample: ""), OpenProcess(pid: 9031, command: "Adobe Media Encoder", uid: getuid(), fileCount: 12, sample: "")]
@@ -191,6 +206,67 @@ final class SystemFixesModel: ObservableObject {
             diagnosis = nil
             analyze()
         }
+    }
+
+    // MARK: Ouvrir avec par type de fichier
+
+    func analyzeType(_ ext: String? = nil) {
+        if let ext { typeInput = ext }
+        guard !busy else { return }
+        let input = typeInput
+        busy = true
+        Task {
+            let (analysis, def) = await Task.detached(priority: .userInitiated) { () -> (FileAssociations.Analysis?, String?) in
+                let clean = input.trimmingCharacters(in: CharacterSet(charactersIn: ". ")).lowercased()
+                guard let type = UTType(filenameExtension: clean) else { return (nil, nil) }
+                let apps = NSWorkspace.shared.urlsForApplications(toOpen: type).map(\.path)
+                let def = NSWorkspace.shared.urlForApplication(toOpen: type)?.path
+                return (FileAssociations.analyze(ext: clean, appPaths: apps, defaultPath: def), def)
+            }.value
+            typeAnalysis = analysis
+            typeDefault = def
+            typeSelection = Set((analysis?.apps ?? []).filter(\.preselected).map(\.path))
+            if analysis == nil { message = L("fix.type.unknown", input) }
+            busy = false
+        }
+    }
+
+    func chooseFileForType() {
+        guard let url = chooseURLs(files: true, multiple: false, directory: nil).first, !url.pathExtension.isEmpty else { return }
+        analyzeType(url.pathExtension)
+    }
+
+    func removeTypeSelection() {
+        guard !busy, let a = typeAnalysis else { return }
+        let paths = a.apps.filter { $0.removable && typeSelection.contains($0.path) }.map(\.path)
+        guard !paths.isEmpty else { return }
+        busy = true
+        Task {
+            await run(LSRegistry.unregisterScript(paths))
+            undoPaths = paths.filter { FileManager.default.fileExists(atPath: $0) }
+            UserDefaults.standard.set(undoPaths, forKey: Self.undoKey)
+            await run(SystemCaches.relaunchScript.replacingOccurrences(of: "/usr/bin/killall Dock 2>/dev/null\n", with: ""))
+            message = L("fix.openWith.done", paths.count)
+            busy = false
+            analyzeType()
+        }
+    }
+
+    func setDefault(_ app: URL) {
+        guard let a = typeAnalysis, let type = UTType(a.typeID) else { return }
+        Task {
+            do { try await NSWorkspace.shared.setDefaultApplication(at: app, toOpen: type); message = L("fix.type.defaultSet", app.deletingPathExtension().lastPathComponent, a.ext) }
+            catch { message = L("fix.type.defaultFailed") }
+            analyzeType()
+        }
+    }
+
+    func chooseDefault() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.applicationBundle]
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.canChooseDirectories = false
+        if panel.runModal() == .OK, let url = panel.url { setDefault(url) }
     }
 
     // MARK: Extensions
