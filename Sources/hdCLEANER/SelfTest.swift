@@ -231,8 +231,9 @@ enum SelfTest {
     }
 
     private static func save<V: View>(_ view: V, size: NSSize, to url: URL) {
-        let host = NSHostingView(rootView: view.environment(\.colorScheme, .dark))
-        host.appearance = NSAppearance(named: .darkAqua)
+        let light = ProcessInfo.processInfo.environment["HDCLEANER_THEME"] == "light"
+        let host = NSHostingView(rootView: view.environment(\.colorScheme, light ? .light : .dark))
+        host.appearance = NSAppearance(named: light ? .aqua : .darkAqua)
         host.frame = NSRect(origin: .zero, size: size)
         host.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(0.3))
@@ -309,22 +310,24 @@ enum SelfTest {
     private static func render(to dir: URL) {
         _ = NSApplication.shared
         NSApp.setActivationPolicy(.prohibited) // jamais de fenêtre ni d'icône pendant l'essai
-        Socle.apply(.dark)
+        let env = ProcessInfo.processInfo.environment
+        Socle.apply(env["HDCLEANER_THEME"] == "light" ? .light : .dark)
+        let W = CGFloat(Double(env["HDCLEANER_W"] ?? "") ?? 1080)
         Socle.brand("hdCLEANER", color: Brand.color)
         let home = ProcessInfo.processInfo.environment["HDCLEANER_HOME"].map { URL(fileURLWithPath: $0) } ?? dir
         seedTimeline(home)
         let model = AppModel(home: home)
-        save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("welcome.png"))
+        save(MainView().environmentObject(model), size: NSSize(width: W, height: 680), to: dir.appendingPathComponent("welcome.png"))
         model.mode = .timeline
-        save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("timeline.png"))
+        save(MainView().environmentObject(model), size: NSSize(width: W, height: 680), to: dir.appendingPathComponent("timeline.png"))
         model.mode = .security
-        save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("security.png"))
+        save(MainView().environmentObject(model), size: NSSize(width: W, height: 680), to: dir.appendingPathComponent("security.png"))
         model.mode = .clean
         model.scan()
         wait(model)
-        save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("main.png"))
+        save(MainView().environmentObject(model), size: NSSize(width: W, height: 680), to: dir.appendingPathComponent("main.png"))
         model.mode = .overview
-        save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("overview.png"))
+        save(MainView().environmentObject(model), size: NSSize(width: W, height: 680), to: dir.appendingPathComponent("overview.png"))
         model.mode = .clean
         for tab in SettingsTab.allCases { // fenêtre des réglages, chaque onglet
             save(SettingsView(tab: tab).environmentObject(model), size: NSSize(width: 520, height: 460), to: dir.appendingPathComponent("settings-\(tab.rawValue).png"))
@@ -340,14 +343,14 @@ enum SelfTest {
         model.mode = .fixes
         for tab in FixTab.allCases {
             model.fixes.tab = tab
-            save(MainView().environmentObject(model), size: NSSize(width: 1180, height: 760), to: dir.appendingPathComponent("fixes-\(tab.rawValue).png"))
+            save(MainView().environmentObject(model), size: NSSize(width: W, height: 760), to: dir.appendingPathComponent("fixes-\(tab.rawValue).png"))
         }
         model.fixes.tab = .openWith
         model.fixes.openView = .byType
-        save(MainView().environmentObject(model), size: NSSize(width: 1180, height: 900), to: dir.appendingPathComponent("fixes-bytype.png"))
+        save(MainView().environmentObject(model), size: NSSize(width: W, height: 900), to: dir.appendingPathComponent("fixes-bytype.png"))
         model.fixes.openView = .junk
         model.mode = .maintenance
-        save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("maintenance.png"))
+        save(MainView().environmentObject(model), size: NSSize(width: W, height: 680), to: dir.appendingPathComponent("maintenance.png"))
         model.mode = .permissions
         model.permissions.add([home.appendingPathComponent("Downloads").path, home.appendingPathComponent("Movies").path])
         model.permissions.fileMode = "644"
@@ -356,19 +359,19 @@ enum SelfTest {
         model.permissions.flags.locked = .off
         model.permissions.clearQuarantine = true
         model.permissions.advanced = true
-        save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("permissions-advanced.png"))
+        save(MainView().environmentObject(model), size: NSSize(width: W, height: 680), to: dir.appendingPathComponent("permissions-advanced.png"))
         model.permissions.advanced = false
         model.permissions.diagnose()
         let waitEnd = Date().addingTimeInterval(30)
         while model.permissions.diagnosing && Date() < waitEnd { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
         RunLoop.main.run(until: Date().addingTimeInterval(0.3))
-        save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("permissions.png"))
+        save(MainView().environmentObject(model), size: NSSize(width: W, height: 680), to: dir.appendingPathComponent("permissions.png"))
         model.mode = .invisibles
         model.invisibles.root = home
         model.invisibles.startScan()
         wait(model.invisibles)
         model.settings.watchedFolders = []
-        save(MainView().environmentObject(model), size: NSSize(width: 1080, height: 680), to: dir.appendingPathComponent("invisibles.png"))
+        save(MainView().environmentObject(model), size: NSSize(width: W, height: 680), to: dir.appendingPathComponent("invisibles.png"))
         model.mode = .clean
         for tab in SettingsTab.allCases {
             save(SettingsView(tab: tab).environmentObject(model), size: NSSize(width: 480, height: 380), to: dir.appendingPathComponent("settings-\(tab.rawValue).png"))

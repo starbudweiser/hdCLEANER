@@ -69,19 +69,22 @@ struct AnimatedDiskMark: View {
 
 /// Filigrane du fond de la colonne de gauche : un plateau de disque dur très pâle, à demi sorti du cadre par le bas.
 struct DiskWatermark: View {
+    @Environment(\.colorScheme) private var scheme
     var body: some View {
+        let ink: Color = scheme == .dark ? .white : .black
+        let k: Double = scheme == .dark ? 1 : 0.7
         GeometryReader { geo in
             let d = max(geo.size.width * 1.7, 260)
             ZStack {
-                Circle().fill(Color.white.opacity(0.025))
-                Sector(degrees: 100).fill(Brand.color.opacity(0.075))
+                Circle().fill(ink.opacity(0.025 * k))
+                Sector(degrees: 100).fill(Brand.color.opacity(scheme == .dark ? 0.075 : 0.035))
                 ForEach([0.14, 0.27, 0.40, 0.53, 0.66], id: \.self) { inset in
-                    Circle().stroke(Color.white.opacity(0.05), lineWidth: 1).padding(d * inset / 2)
+                    Circle().stroke(ink.opacity(0.05 * k), lineWidth: 1).padding(d * inset / 2)
                 }
-                Circle().fill(Color.white.opacity(0.04)).frame(width: d * 0.16, height: d * 0.16)
-                Circle().stroke(Color.white.opacity(0.07), lineWidth: 1.5).frame(width: d * 0.16, height: d * 0.16)
+                Circle().fill(ink.opacity(0.04 * k)).frame(width: d * 0.16, height: d * 0.16)
+                Circle().stroke(ink.opacity(0.07 * k), lineWidth: 1.5).frame(width: d * 0.16, height: d * 0.16)
                 // bras de lecture
-                Capsule().fill(Color.white.opacity(0.05)).frame(width: d * 0.50, height: 8)
+                Capsule().fill(ink.opacity(0.05 * k)).frame(width: d * 0.50, height: 8)
                     .offset(x: d * 0.30, y: d * 0.20).rotationEffect(.degrees(-38))
             }
             .frame(width: d, height: d)

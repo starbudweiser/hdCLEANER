@@ -37,7 +37,7 @@ struct MainView: View {
     var body: some View {
         ZStack {
             HStack(spacing: Socle.M.space3) {
-                SidebarView().frame(width: 200)
+                SidebarView().frame(width: 228)
                 VStack(alignment: .leading, spacing: Socle.M.space3) {
                     if model.mode != .overview { header }
                     switch model.mode {

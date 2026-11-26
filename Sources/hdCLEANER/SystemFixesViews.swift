@@ -65,7 +65,7 @@ private struct StatCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("\(value)").socle(Socle.T.display).monospacedDigit().foregroundStyle(Socle.C.textStrong)
-            Text(label).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            Text(label).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted).lineLimit(2).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, Socle.M.space4).padding(.vertical, Socle.M.space3)
         .frame(maxWidth: .infinity, minHeight: 78, maxHeight: 78, alignment: .topLeading)
@@ -78,7 +78,7 @@ private struct StatCard: View {
 private struct StatGrid<Content: View>: View {
     @ViewBuilder let content: Content
     var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Socle.M.space2, alignment: .top), count: 4), spacing: Socle.M.space2) { content }
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 170), spacing: Socle.M.space2, alignment: .top)], spacing: Socle.M.space2) { content }
     }
 }
 
@@ -86,7 +86,7 @@ private struct Tag: View {
     let text: String
     var color: Color = Socle.C.textMuted
     var body: some View {
-        Text(text).socle(Socle.T.caption).foregroundStyle(color)
+        Text(text).socle(Socle.T.caption).foregroundStyle(color).lineLimit(1).fixedSize()
             .padding(.horizontal, Socle.M.space2).padding(.vertical, 1)
             .background(Socle.C.bgSunken, in: Capsule())
     }
@@ -181,21 +181,31 @@ private struct ByTypePane: View {
         return parts.joined(separator: " · ")
     }
 
+    private func typeBar(tag: Bool, extras: Bool) -> some View {
+        HStack(spacing: Socle.M.space2) {
+            Text(L("fix.type.field")).socle(Socle.T.labelStrong).foregroundStyle(Socle.C.textStrong).lineLimit(1).fixedSize()
+            TextField("pdf", text: $model.typeInput).textFieldStyle(.roundedBorder).frame(width: 110).onSubmit { model.analyzeType() }
+            Button(L("fix.analyze")) { model.analyzeType() }.buttonStyle(SocleButtonStyle(.secondary, height: 24)).fixedSize().disabled(model.busy)
+            if tag, let a = model.typeAnalysis { Tag(text: "\(a.typeName) · \(a.typeID)").lineLimit(1).fixedSize() }
+            Spacer(minLength: 0)
+            if extras {
+                ForEach(common, id: \.self) { e in Button(".\(e)") { model.analyzeType(e) }.buttonStyle(SocleButtonStyle(.tertiary, height: 24)).fixedSize() }
+            }
+            Button(L("fix.type.chooseFile")) { model.chooseFileForType() }.buttonStyle(SocleButtonStyle(.secondary, height: 24)).lineLimit(1).fixedSize()
+        }
+        .padding(.horizontal, Socle.M.space3).frame(height: 40).background(Socle.C.surfaceRaised)
+    }
+
     var body: some View {
         VStack(spacing: Socle.M.space3) {
             Note(text: L("fix.type.help"))
             Panel {
                 VStack(spacing: 0) {
-                    HStack(spacing: Socle.M.space2) {
-                        Text(L("fix.type.field")).socle(Socle.T.labelStrong).foregroundStyle(Socle.C.textStrong)
-                        TextField("pdf", text: $model.typeInput).textFieldStyle(.roundedBorder).frame(width: 110).onSubmit { model.analyzeType() }
-                        Button(L("fix.analyze")) { model.analyzeType() }.buttonStyle(SocleButtonStyle(.secondary, height: 24)).fixedSize().disabled(model.busy)
-                        if let a = model.typeAnalysis { Tag(text: "\(a.typeName) · \(a.typeID)") }
-                        Spacer()
-                        ForEach(common, id: \.self) { e in Button(".\(e)") { model.analyzeType(e) }.buttonStyle(SocleButtonStyle(.tertiary, height: 24)).fixedSize() }
-                        Button(L("fix.type.chooseFile")) { model.chooseFileForType() }.buttonStyle(SocleButtonStyle(.secondary, height: 24)).fixedSize()
+                    ViewThatFits(in: .horizontal) {
+                        typeBar(tag: true, extras: true)
+                        typeBar(tag: false, extras: true)
+                        typeBar(tag: false, extras: false)
                     }
-                    .padding(.horizontal, Socle.M.space3).frame(height: 40).background(Socle.C.surfaceRaised)
                     if let a = model.typeAnalysis {
                         FixRow(title: L("fix.type.defaultApp"), detail: L("fix.type.defaultHelp", a.ext), lead: Color.clear.frame(width: 0, height: 0),
                                trail: HStack(spacing: Socle.M.space3) {
