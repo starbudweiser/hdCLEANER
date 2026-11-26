@@ -122,7 +122,7 @@ final class SystemFixesModel: ObservableObject {
             let dump = await capture(SystemTools.lsregister, ["-dump"])
             let d = await Task.detached(priority: .userInitiated) { LSRegistry.diagnose(paths: LSRegistry.parseDump(dump), context: .live(home: home)) }.value
             diagnosis = d
-            selection = Set(d.stale.map(\.path) + d.duplicates.map(\.path) + d.droplets.map(\.path))
+            selection = Set(d.stale.map(\.path) + d.duplicates.map(\.path) + d.droplets.map(\.path) + d.devBuilds.map(\.path))
             busy = false
         }
     }
@@ -131,7 +131,7 @@ final class SystemFixesModel: ObservableObject {
 
     func cleanOpenWith() {
         guard !busy, !selection.isEmpty, let d = diagnosis else { return }
-        let all = d.stale + d.duplicates + d.droplets
+        let all = d.stale + d.duplicates + d.droplets + d.devBuilds
         let paths = all.map(\.path).filter { selection.contains($0) }
         busy = true
         Task {

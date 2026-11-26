@@ -12,7 +12,7 @@ public enum SystemTools {
 // MARK: - Launch Services (« Ouvrir avec »)
 
 public enum LSRegistry {
-    public enum Reason: String, Sendable { case missing, cache, build, temporary, trash, duplicate, droplet }
+    public enum Reason: String, Sendable { case missing, cache, build, temporary, trash, duplicate, droplet, devBuild }
 
     public struct Finding: Identifiable, Hashable, Sendable {
         public var id: String { path }
@@ -31,10 +31,12 @@ public enum LSRegistry {
         public var stale: [Finding] = []
         public var duplicates: [Finding] = []
         public var droplets: [Finding] = []
+        /// Versions de développement (identifiant en « .dev » / « .test ») dont l'appli installée existe.
+        public var devBuilds: [Finding] = []
         /// Groupes d'un même identifiant laissés tels quels (versions qui cohabitent).
         public var keptGroups: [(bundleID: String, paths: [String])] = []
         public init() {}
-        public var total: Int { stale.count + duplicates.count + droplets.count }
+        public var total: Int { stale.count + duplicates.count + droplets.count + devBuilds.count }
         public var missingCount: Int { stale.filter { $0.reason == .missing }.count }
         public var cacheCount: Int { stale.filter { $0.reason != .missing }.count }
     }
@@ -117,6 +119,12 @@ public enum LSRegistry {
     static func isNewer(_ a: String?, than b: String?) -> Bool { versionKey(a).lexicographicallyPrecedes(versionKey(b)) == false && versionKey(a) != versionKey(b) }
 
     /// Un droplet : paquet signé « dplt » ou exécutable « droplet », qui déclare un grand nombre de formats (il s'ajoute à « Ouvrir avec » pour chacun).
+    /// « fr.stephan.mfonts.dev » → « fr.stephan.mfonts » ; nil si l'identifiant n'est pas celui d'une version de développement.
+    static func devBase(of id: String) -> String? {
+        for suffix in [".dev", ".test", ".debug", ".beta-dev"] where id.hasSuffix(suffix) && id.count > suffix.count { return String(id.dropLast(suffix.count)) }
+        return nil
+    }
+
     public static func isDroplet(_ info: BundleInfo, path: String, home: String) -> Bool {
         (info.signature == "dplt" || info.executable == "droplet") && info.documentTypeCount >= 20
     }
@@ -124,6 +132,7 @@ public enum LSRegistry {
     public static func diagnose(paths: [String], context c: Context) -> Diagnosis {
         var d = Diagnosis()
         var byID: [String: [(path: String, info: BundleInfo)]] = [:]
+        var devCandidates: [(path: String, info: BundleInfo, base: String)] = []
         for path in paths {
             // Disque non monté : on n'y touche pas. Système : jamais.
             if path.hasPrefix("/Volumes/") {
@@ -142,7 +151,15 @@ public enum LSRegistry {
                 d.droplets.append(Finding(path: path, reason: .droplet, bundleID: info.bundleID, version: info.version, keeping: nil)); continue
             }
             if let id = info.bundleID, !id.hasPrefix("com.apple.") { byID[id, default: []].append((path, info)) }
+            if let id = info.bundleID, let base = devBase(of: id) { devCandidates.append((path, info, base)) }
         }
+        for dev in devCandidates where !isInstalledLocation(dev.path, home: c.home) {
+            if let installed = byID[dev.base]?.first(where: { isInstalledLocation($0.path, home: c.home) }) {
+                d.devBuilds.append(Finding(path: dev.path, reason: .devBuild, bundleID: dev.info.bundleID, version: dev.info.version, keeping: installed.path))
+            }
+        }
+        let devPaths = Set(d.devBuilds.map(\.path))
+        byID = byID.mapValues { $0.filter { !devPaths.contains($0.path) } }
         for (id, list) in byID.sorted(by: { $0.key < $1.key }) where list.count > 1 {
             let installed = list.filter { isInstalledLocation($0.path, home: c.home) }
             if !installed.isEmpty {
@@ -160,6 +177,7 @@ public enum LSRegistry {
         d.stale.sort { ($0.reason.rawValue, $0.path) < ($1.reason.rawValue, $1.path) }
         d.duplicates.sort { ($0.bundleID ?? "", $0.path) < ($1.bundleID ?? "", $1.path) }
         d.droplets.sort { $0.path < $1.path }
+        d.devBuilds.sort { $0.path < $1.path }
         return d
     }
 

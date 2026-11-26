@@ -72,7 +72,7 @@ main{flex:1;display:flex;flex-direction:column;min-width:0}
  <div class="head"><div class="t"><h1>Corrections système</h1><p>Répare les petits défauts de macOS : menus contextuels, vignettes, disques qui ne s'éjectent pas.</p></div></div>
  <div class="tabs" id="tabs">
   <div class="tab on" data-p="p1">Ouvrir avec</div><div class="tab" data-p="p2">Extensions</div><div class="tab" data-p="p3">Services</div>
-  <div class="tab" data-p="p4">Vignettes et icônes</div><div class="tab" data-p="p5">Disque occupé</div><div class="tab" data-p="p6">Quarantaine</div>
+  <div class="tab" data-p="p4">Vignettes et icônes</div><div class="tab" data-p="p5">Disque occupé</div><div class="tab" data-p="p6">Quarantaine</div><div class="tab" data-p="p7">Associations</div>
  </div>
  <div class="body">
 
@@ -155,6 +155,37 @@ main{flex:1;display:flex;flex-direction:column;min-width:0}
   <div class="note">Une application refuse de s'ouvrir (« développeur non identifié ») ? Glissez-la ici pour lever la quarantaine. Seulement pour une application dont vous connaissez la source.</div>
   <div class="drop">Glissez une application ici</div>
   <div class="panel"><div class="row"><div class="n">Exemple.app<em>~/Téléchargements · quarantaine : Safari, 12 nov. 2026</em></div><button class="btn sm">Lever la quarantaine</button></div></div>
+ </div>
+
+
+ <!-- 7 -->
+ <div class="pane" id="p7">
+  <div class="note">Pour un type de fichier, voyez quelles applications macOS propose dans « Ouvrir avec » et retirez celles qui n'ont rien à y faire. Chaque ligne dit <b>pourquoi</b> l'application s'y trouve.</div>
+  <div class="panel"><div class="ph"><h3>Type de fichier</h3>
+    <input value=".pdf" style="background:var(--sunken);color:var(--text);border:1px solid var(--border);border-radius:4px;height:24px;width:110px;padding:0 8px;font:inherit">
+    <span class="badge">PDF · com.adobe.pdf</span><span class="sp" style="flex:1"></span>
+    <button class="btn sm">.mp4</button><button class="btn sm">.png</button><button class="btn sm">.txt</button><button class="btn sm">.zip</button><button class="btn sm">Choisir un fichier…</button></div>
+   <div class="row"><div class="n">Application par défaut<em>ouvre les .pdf d'un double-clic</em></div><b style="color:var(--strong)">mPDF 1.1.11</b><button class="btn sm">Changer…</button></div>
+  </div>
+  <div class="stats">
+   <div class="stat"><b>24</b><span>applications proposées pour .pdf</span></div>
+   <div class="stat"><b>9</b><span>déclarent vraiment ce type (éditeur ou lecteur)</span></div>
+   <div class="stat"><b>11</b><span>rang secondaire « Alternate »</span></div>
+   <div class="stat"><b>4</b><span>type générique (tout fichier)</span></div>
+  </div>
+  <div class="panel"><div class="ph"><h3>Applications proposées pour .pdf</h3><small>coché = retiré de « Ouvrir avec » pour tous les types de cette appli</small><button class="btn sm">Tout décocher</button></div>
+   <div class="row"><div class="cb"></div><div class="n">mPDF 1.1.11<em>déclare « PDF » · éditeur · <b>par défaut</b></em></div><span class="badge ok">légitime</span><span class="m">—</span></div>
+   <div class="row"><div class="cb"></div><div class="n">Adobe Acrobat<em>déclare « PDF » · éditeur</em></div><span class="badge ok">légitime</span><span class="m">—</span></div>
+   <div class="row"><div class="cb"></div><div class="n">Aperçu<em>déclare « PDF » · lecteur · système</em></div><span class="badge ok">système</span><span class="m">—</span></div>
+   <div class="row"><div class="cb on"></div><div class="n">mFONTS<em>déclare « pdf » · lecteur · rang secondaire (analyse de polices) · 19 autres types</em></div><span class="badge warn">secondaire</span><span class="m">perd 19 types</span></div>
+   <div class="row"><div class="cb on"></div><div class="n">mFONTS dev<em>version de développement · déclare « pdf » · rang secondaire</em></div><span class="badge warn">dev</span><span class="m">perd 19 types</span></div>
+   <div class="row"><div class="cb on"></div><div class="n">BoltAI<em>déclare « tout fichier » (public.data) · n'est pas un lecteur de PDF</em></div><span class="badge warn">générique</span><span class="m">perd 1 type</span></div>
+   <div class="row"><div class="cb on"></div><div class="n">Brave Browser<em>déclare « tout document » (public.content) · rang secondaire</em></div><span class="badge warn">générique</span><span class="m">perd 6 types</span></div>
+   <div class="row"><div class="cb"></div><div class="n">Safari<em>déclare « PDF » · lecteur · système</em></div><span class="badge ok">système</span><span class="m">—</span></div>
+  </div>
+  <div class="panel"><div class="row"><div class="n note"><b>Comment ça marche.</b> macOS ne permet pas de retirer une application d'un seul type : « Retirer » masque l'application de <b>toute</b> la liste « Ouvrir avec » (la colonne de droite dit ce qu'elle perdrait). Rien n'est supprimé, l'application reste utilisable depuis le Finder, et « Annuler » la remet. Les applications système ne sont jamais cochées.</div></div></div>
+  <div class="sum"><div class="t"><b>4 applications</b> seront masquées de « Ouvrir avec » · aucun fichier supprimé · le Finder est relancé</div>
+   <button class="btn">Définir une autre application par défaut…</button><button class="btn action">Retirer de la liste</button></div>
  </div>
 
  <div class="panel" style="margin-top:auto"><div class="row"><div class="n note">Éléments de connexion et agents orphelins : voir « Restes d'applis » dans Nettoyage.</div><span class="link">Ouvrir Nettoyage →</span></div></div>

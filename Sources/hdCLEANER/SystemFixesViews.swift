@@ -183,7 +183,7 @@ private struct OpenWithPane: View {
                 HStack(spacing: Socle.M.space2) {
                     StatCard(value: d.missingCount, label: L("fix.stat.missing"))
                     StatCard(value: d.cacheCount, label: L("fix.stat.cache"))
-                    StatCard(value: d.duplicates.count, label: L("fix.stat.duplicates"))
+                    StatCard(value: d.duplicates.count + d.devBuilds.count, label: L("fix.stat.duplicates"))
                     StatCard(value: d.droplets.count, label: L("fix.stat.droplets"))
                 }
                 if !d.stale.isEmpty {
@@ -225,6 +225,24 @@ private struct OpenWithPane: View {
                             ForEach(d.keptGroups, id: \.bundleID) { g in
                                 FixRow(title: L("fix.coexist.row", ((g.paths[0] as NSString).lastPathComponent as NSString).deletingPathExtension, g.paths.count), detail: L("fix.coexist.help"),
                                        lead: Color.clear.frame(width: 28, height: 28), trail: Tag(text: L("fix.coexist.tag")))
+                            }
+                        }
+                    }
+                }
+                if !d.devBuilds.isEmpty {
+                    let devs = d.devBuilds.map(\.path)
+                    Panel {
+                        VStack(spacing: 0) {
+                            HStack(spacing: Socle.M.space2) {
+                                CheckBox(state: state(devs)) { toggle(devs) }
+                                Text(L("fix.dev.title")).socle(Socle.T.labelStrong).foregroundStyle(Socle.C.textStrong)
+                                Spacer()
+                                Text(L("fix.dev.hint")).socle(Socle.T.meta).foregroundStyle(Socle.C.textMuted)
+                            }
+                            .padding(.horizontal, Socle.M.space3 - 6).frame(height: 32).background(Socle.C.surfaceRaised)
+                            ForEach(d.devBuilds) { f in
+                                FixRow(title: ((f.path as NSString).lastPathComponent as NSString).deletingPathExtension, detail: shortPath(f.path),
+                                       lead: CheckBox(state: state([f.path])) { toggle([f.path]) }, trail: Tag(text: L("fix.reason.devBuild"), color: Socle.C.warning))
                             }
                         }
                     }

@@ -562,6 +562,9 @@ T = [
 ("fix.quarantine.done", "Quarantaine levée : %@", "Quarantine lifted: %@", "Cuarentena quitada: %@", "Quarantena tolta: %@"),
 ("fix.quarantine.failed", "Impossible de lever la quarantaine : %@", "Could not lift quarantine: %@", "No se pudo quitar la cuarentena: %@", "Impossibile togliere la quarantena: %@"),
 ("fix.quarantine.refused", "Refusé : %@ (application système ou fichier invalide)", "Refused: %@ (system app or invalid file)", "Rechazado: %@ (app del sistema o archivo no válido)", "Rifiutato: %@ (app di sistema o file non valido)"),
+("fix.dev.title", "Versions de développement", "Development versions", "Versiones de desarrollo", "Versioni di sviluppo"),
+("fix.dev.hint", "identifiant « .dev » dont l'appli installée existe", "“.dev” identifier whose installed app exists", "identificador «.dev» cuya app instalada existe", "identificatore «.dev» la cui app installata esiste"),
+("fix.reason.devBuild", "développement", "development", "desarrollo", "sviluppo"),
 ]
 INFOPLIST = [
 ("CFBundleDisplayName", "hdCLEANER", "hdCLEANER", "hdCLEANER", "hdCLEANER"),

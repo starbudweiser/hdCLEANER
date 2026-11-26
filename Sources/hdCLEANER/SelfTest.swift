@@ -105,6 +105,7 @@ enum SelfTest {
         let d = LSRegistry.diagnose(paths: paths, context: .live(home: FileManager.default.homeDirectoryForCurrentUser))
         Swift.print("chemins .app :", paths.count, "| absents :", d.missingCount, "| cache/temp/build/corbeille :", d.cacheCount, "| doublons :", d.duplicates.count, "| droplets :", d.droplets.count, "| cohabitations :", d.keptGroups.count)
         for f in d.duplicates.prefix(8) { Swift.print("  doublon", f.path, "→ garde", f.keeping ?? "") }
+        for f in d.devBuilds.prefix(20) { Swift.print("  dev", f.path, "→ installée", f.keeping ?? "") }
         for f in d.droplets.prefix(5) { Swift.print("  droplet", f.path) }
         let q = Process(), qp = Pipe()
         q.executableURL = URL(fileURLWithPath: "/usr/bin/pluginkit"); q.arguments = ["-mAvv"]; q.standardOutput = qp

@@ -48,6 +48,15 @@ final class SystemFixesTests: XCTestCase {
         XCTAssertEqual(d.keptGroups.count, 1)
     }
 
+    func testDevelopmentBuildsOfInstalledApps() {
+        let inst = "/Users/me/Applications/Applications Personnelles/mFONTS.app", dev = "/Volumes/Dev/mFONTS/mFONTS dev.app", orphan = "/Volumes/Dev/x/Other dev.app"
+        let infos: [String: LSRegistry.BundleInfo] = [inst: .init(bundleID: "fr.s.mfonts", version: "1.0"), dev: .init(bundleID: "fr.s.mfonts.dev", version: "1.1"), orphan: .init(bundleID: "fr.s.other.dev")]
+        let d = LSRegistry.diagnose(paths: Array(infos.keys), context: context(existing: Set(infos.keys), infos: infos, volumes: ["/Volumes/Dev"]))
+        XCTAssertEqual(d.devBuilds.map(\.path), [dev]) // l'appli sans version installée n'est pas touchée
+        XCTAssertEqual(d.devBuilds.first?.keeping, inst)
+        XCTAssertTrue(d.duplicates.isEmpty)
+    }
+
     func testNestedAndLibraryAppsAreIgnored() {
         let nested = "/Applications/Adobe/Premiere.app/Contents/AdobeCrashReport.app", lib = "/Library/Application Support/Adobe/Uninstall/X.app"
         let ctx = context(existing: [], infos: [:])

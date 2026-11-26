@@ -546,3 +546,6 @@
 "fix.quarantine.done" = "Quarantine lifted: %@";
 "fix.quarantine.failed" = "Could not lift quarantine: %@";
 "fix.quarantine.refused" = "Refused: %@ (system app or invalid file)";
+"fix.dev.title" = "Development versions";
+"fix.dev.hint" = "“.dev” identifier whose installed app exists";
+"fix.reason.devBuild" = "development";
